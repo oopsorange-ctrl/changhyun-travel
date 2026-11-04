@@ -16,7 +16,7 @@ export const schoolConfig={
   /** 배포한 사이트의 주소. 끝에 /를 붙인다. 공유 미리보기 이미지 주소에 쓰인다. */
   siteUrl:'https://changhyun-travel.vercel.app/',
   /** public/ 안의 1200×630 공유 이미지 (학교 모형이 완성된 뒤 창현고 것으로 교체) */
-  shareImage:'school-share-v1.jpg',
+  shareImage:'school-share-v2.jpg',
   shareImageAlt:'창현 여행 — 크림색 배경에 펼쳐진 3D 학교 전경',
   themeColor:'#f3eedf',
   /**

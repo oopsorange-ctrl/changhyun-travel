@@ -47,4 +47,4 @@ Meshy 모형과 그 파생본은 CC BY 4.0이다. 공유할 때는 제작 정보
 
 ## 공유 이미지
 
-- `public/school-share-v1.jpg`(1200×630)는 `assets/school-share-card.html`을 브라우저에서 열어 촬영한 이미지다. 학교 3D 모형 화면으로 만들었다.
+- `public/school-share-v2.jpg`(1200×630, 창현 여행)은 `assets/school-share-card.html`을 브라우저에서 열어 촬영한 이미지다. 학교 3D 모형 화면으로 만들었다.
