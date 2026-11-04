@@ -527,9 +527,9 @@ export async function createSchool(host:HTMLElement) {
   }
 
   const classroomProps=createClassroomProps(upperProps,asset,floor=>upperViews.get(floor)!);
-  // 창이(남)와 현이(여): 한 명을 조종하고 다른 한 명이 뒤따른다. 3D 모형이 준비되기 전까지는 같은 임시 모형의 색만 달리 쓴다.
+  // 창이(남)와 현이(여): 한 명을 조종하고 다른 한 명이 뒤따른다. 창이는 학생 모형, 현이는 같은 몸에 긴 머리와 치마를 더한 모형이다(assets/prepare_hyeoni.py).
   // 진짜 모형이 생기면 heroFiles의 파일만 바꾸면 된다(관절 이름 playerHips 등과 Idle·Walk 동작이 같아야 한다).
-  const heroFiles:Record<'boy'|'girl',string>={boy:'school-player-meshy.glb',girl:'school-player-meshy.glb'};
+  const heroFiles:Record<'boy'|'girl',string>={boy:'school-player-meshy.glb',girl:'school-hyeoni.glb'};
   const loaded=new Map<string,Awaited<ReturnType<GLTFLoader['loadAsync']>>>();
   for(const file of new Set(Object.values(heroFiles)))loaded.set(file,await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}${file}`));
   const player=new THREE.Group();player.name='school-tour-player';player.position.set(campusSpawn.x,.08,campusSpawn.z);scene.add(player);
@@ -541,15 +541,15 @@ export async function createSchool(host:HTMLElement) {
   }});
   type Hero='boy'|'girl';
   const heroes:Record<Hero,{name:string;tint:number;height:number}>={
-    boy:{name:'창이',tint:0xdbe4f2,height:schoolPlayerHeight},
-    girl:{name:'현이',tint:0xf8dde8,height:schoolPlayerHeight*.95},
+    boy:{name:'창이',tint:0xffffff,height:schoolPlayerHeight},
+    girl:{name:'현이',tint:0xffffff,height:schoolPlayerHeight*.97},
   };
   function makeRig(kind:Hero) {
     const asset=loaded.get(heroFiles[kind])!;
     const bounds=new THREE.Box3().setFromObject(asset.scene),modelHeight=bounds.max.y-bounds.min.y;
     const model=cloneSkinned(asset.scene);
     model.traverse(object=>{if(object instanceof THREE.Mesh){
-      const mat=(object.material as THREE.MeshStandardMaterial).clone();mat.color.set(heroes[kind].tint);object.material=mat;
+      const mat=(object.material as THREE.MeshStandardMaterial).clone();mat.color.multiply(new THREE.Color(heroes[kind].tint));object.material=mat;
     }});
     model.scale.setScalar(heroes[kind].height/Math.max(.01,modelHeight));
     const group=new THREE.Group();group.name=`hero-${kind}`;group.add(model);

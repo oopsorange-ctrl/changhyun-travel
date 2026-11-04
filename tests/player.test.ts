@@ -6,14 +6,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createPlayerMotion, type PlayerPose } from '../src/player.ts';
 import { schoolPlayerHeight } from '../src/school-plan-data.ts';
 
-for(const [folder,filename] of [['assets','player.glb'],['public','school-player-meshy.glb']])test(`${filename} stands at full height, walks in place and keeps a supporting foot grounded`,async()=>{
+for(const [folder,filename] of [['assets','player.glb'],['public','school-player-meshy.glb'],['public','school-hyeoni.glb']])test(`${filename} stands at full height, walks in place and keeps a supporting foot grounded`,async()=>{
   const bytes=readFileSync(new URL(`../${folder}/${filename}`,import.meta.url));
   const loader=new GLTFLoader();
   // Rendering textures needs a browser; geometry, skin weights and clips remain real.
   loader.register(()=>({name:'headlessMaterials',loadMaterial:()=>Promise.resolve(new THREE.MeshStandardMaterial())}));
   const asset=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
-  const expectedHeight=filename.startsWith('school-player')?schoolPlayerHeight:1.45;
-  if(filename.startsWith('school-player')) {
+  const expectedHeight=filename.startsWith('school-')?schoolPlayerHeight:1.45;
+  if(filename.startsWith('school-')) {
     const initial=new THREE.Box3().setFromObject(asset.scene);
     asset.scene.scale.setScalar(schoolPlayerHeight/(initial.max.y-initial.min.y));
     assert.equal(schoolPlayerHeight,1.70);
@@ -32,14 +32,14 @@ for(const [folder,filename] of [['assets','player.glb'],['public','school-player
   const headRatio=(bounds.max.y-head.getWorldPosition(new THREE.Vector3()).y)/height;
   const hipsRatio=(hips.getWorldPosition(new THREE.Vector3()).y-bounds.min.y)/height;
   assert.ok(headRatio>.37&&headRatio<.42,`enlarged head must occupy about 40% of height: ${headRatio}`);
-  assert.ok(filename==='school-player-meshy.glb'?hipsRatio>.25&&hipsRatio<.30:hipsRatio>.20&&hipsRatio<.24,`hips must retain the selected character's proportions: ${hipsRatio}`);
+  assert.ok(filename.startsWith('school-')?hipsRatio>.25&&hipsRatio<.30:hipsRatio>.20&&hipsRatio<.24,`hips must retain the selected character's proportions: ${hipsRatio}`);
   assert.ok((bounds.max.x-bounds.min.x)/height>.44,'head and body must retain the wider cozy silhouette');
-  if(filename==='school-player-meshy.glb')for(const [side,word] of [['L','Left'],['R','Right']]) {
+  if(filename.startsWith('school-'))for(const [side,word] of [['L','Left'],['R','Right']]) {
     const shoulder=asset.scene.getObjectByName(`playerArm${side}`)!.getWorldPosition(new THREE.Vector3());
     const elbow=asset.scene.getObjectByName(`mixamorig${word}ForeArm`)!.getWorldPosition(new THREE.Vector3());
     assert.ok(Math.abs(elbow.x-shoulder.x)<.06,`${side} elbow should rest close to the body`);
   }
-  if(filename==='school-player-meshy.glb')for(const foot of ['playerFootL','playerFootR']) {
+  if(filename.startsWith('school-'))for(const foot of ['playerFootL','playerFootR']) {
     let sole=Infinity;
     asset.scene.traverse(object=>{
       if(!(object instanceof THREE.SkinnedMesh))return;
@@ -59,7 +59,7 @@ for(const [folder,filename] of [['assets','player.glb'],['public','school-player
     assert.ok(Number.isFinite(bounds.min.y));
     assert.ok(Math.abs(bounds.min.y-.17)<.012,`walking floor at ${frame}: ${bounds.min.y}`);
     assert.ok(Math.abs(bounds.getCenter(new THREE.Vector3()).z-player.position.z)<.35,'walking clip must not move the player through the room');
-    if(filename==='school-player-meshy.glb') {
+    if(filename.startsWith('school-')) {
       const local=new THREE.Matrix4().copy(player.matrixWorld).invert();
       const left=asset.scene.getObjectByName('mixamorigLeftLeg')!.getWorldPosition(new THREE.Vector3()).applyMatrix4(local);
       const right=asset.scene.getObjectByName('mixamorigRightLeg')!.getWorldPosition(new THREE.Vector3()).applyMatrix4(local);

@@ -234,6 +234,14 @@ for material in mesh.data.materials:
     skin_region=np.logical_or.reduce([padded[y:y+height,x:x+width] for y in range(5) for x in range(5)])
     flesh=skin_region.ravel()&(r>.35)&(g>r*.48)&(g<r*.96)&(b>g*.5)&(b<g*.96)
     rgba[flesh,:3]*=np.array((.98,.78,.77),dtype=np.float32)
+    # 창현고 교복색: 버건디 재킷→회색, 붉은 넥타이·베이지 바지·조끼→검정 계열. 머리카락·피부·셔츠는 그대로 둔다.
+    cr,cg,cb=rgba[:,0].copy(),rgba[:,1].copy(),rgba[:,2].copy()
+    lum=.3*cr+.59*cg+.11*cb
+    burgundy=(cr>.08)&(cr>=cg*2.2)&(cb>cg*1.15)&(lum<.45)
+    tie=(cr>.45)&(cg<cr*.35)&(cb<cr*.5)
+    beige=(cr>.45)&(cg>cr*.82)&(cg<cr*.97)&(cb>cg*.68)&(cb<cg*.95)
+    for mask,value in ((burgundy,np.clip(.30+1.5*lum,0,.62)),(tie,.08+lum*.2),(beige,.06+lum*.12)):
+        for channel in range(3):rgba[mask,channel]=value[mask]
     color_image.pixels.foreach_set(pixels);color_image.update();color_image.pack()
     for link in list(bsdf.inputs['Metallic'].links):material.node_tree.links.remove(link)
     bsdf.inputs['Metallic'].default_value=0

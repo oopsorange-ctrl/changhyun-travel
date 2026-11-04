@@ -8,7 +8,7 @@ type Node={name?:string;children?:number[];mesh?:number;matrix?:number[];transla
 type Primitive={indices?:number;attributes:{POSITION:number}};
 type Asset={nodes:Node[];meshes:{primitives:Primitive[]}[];accessors:{count:number;min?:number[];max?:number[]}[];buffers:{uri?:string}[];images?:{uri?:string;bufferView?:number}[]};
 const names=['school-exterior','school-entry','school-furniture','school-residents'];
-for(const name of ['school-player-meshy'])test(`${name} retains a skinned, self-contained mobile character`,()=>{
+for(const name of ['school-player-meshy','school-hyeoni'])test(`${name} retains a skinned, self-contained mobile character`,()=>{
   const {bytes,data}=readAsset(name);
   const triangles=data.meshes.flatMap(m=>m.primitives).reduce((sum,p)=>sum+data.accessors[p.indices!].count/3,0);
   assert.ok(bytes<2*1024*1024);

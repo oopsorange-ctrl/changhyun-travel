@@ -56,6 +56,21 @@ for name, filename, neck, seated in [
     bpy.ops.import_scene.gltf(filepath=str(ROOT/'assets'/f'{filename}-meshy-source.glb'))
     imported = set(bpy.context.scene.objects)-before
     meshes = [obj for obj in imported if obj.type == 'MESH']
+    for mesh in (meshes if filename == 'principal' else []):
+        # 요청: 이마를 조금 넓게. 원본 좌표(머리 z>.5)에서 앞쪽 앞머리선을 위로 끌어올린 뒤 키를 다시 잰다.
+        world = mesh.matrix_world.copy()
+        raw = [world@v.co for v in mesh.data.vertices]
+        head = [q for q in raw if q.z > .55]
+        head_y = sum(q.y for q in head)/len(head)
+        front_y = min(q.y for q in head)
+        def smooth(t):
+            t = max(0, min(1, t))
+            return t*t*(3-2*t)
+        for vertex, q in zip(mesh.data.vertices, raw):
+            if q.z > .5:
+                q.z += .07*smooth((q.z-.57)/.14)*smooth((head_y-q.y)/(head_y-front_y)*1.6)
+            vertex.co = world.inverted()@q
+
     points = [obj.matrix_world@v.co for obj in meshes for v in obj.data.vertices]
     lo = Vector([min(p[i] for p in points) for i in range(3)])
     hi = Vector([max(p[i] for p in points) for i in range(3)])
