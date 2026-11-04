@@ -23,7 +23,7 @@ export const schoolConfig={
    * 방명록·교장선생님 인사말·공간 안내를 주는 Apps Script 웹앱 주소(docs/시트-연결.md).
    * 비워 두면 시트 기능은 "아직 연결하지 않았어요" 안내만 보여 준다.
    */
-  dataUrl:'',
+  dataUrl:'https://script.google.com/macros/s/AKfycbykHUtUt1CC7u_kBRKk4qFg2nE1RON4dVMM5x4kIWRAMnNjyeQn7_yQ8g0OIxIlUx9Z/exec',
   /** 로비 현수막과 기념사진 아래쪽 글 */
   eventTitle:'창현고등학교 입학설명회',
   eventWelcome:'예비 창현인 여러분, 마음껏 둘러보세요',
