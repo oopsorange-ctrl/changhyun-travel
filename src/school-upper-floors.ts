@@ -3,7 +3,8 @@ import type {FloorCell} from './school-floor-data.ts';
 import {planRooms,planCorridors,floorCount,floorList,lowestFloor,floorLabel,roomView,roomViewLabel,type PlanRoom,type PlanStyle,type Side} from './changhyun-plan.ts';
 import {stairs,stairLanding,stairGroundObstacles,floorRise} from './school-structure.ts';
 import {planFloorData} from './school-plan-data.ts';
-import type {ClassroomModel,ClassroomProp} from './school-classrooms.ts';
+import {pieceRect,type ClassroomModel,type ClassroomProp} from './school-classrooms.ts';
+import {roomDetails,type Face} from './school-room-details.ts';
 
 /** 모든 층의 방(본관 1~6층과 별관 0·-1·-2층). 이름은 예전 견본에서 왔지만 1층도 같은 생성기로 만든다. */
 export type UpperRoom=Place&{floor:number;axis:'x'|'z';doorSide:Side;style:'classroom'|'office'|'lab'|'hall'|'gym'|'gallery'|'toilet'|'dining'|'library';row:'north'|'south';view?:'정원'|'운동장';open?:boolean};
@@ -46,12 +47,15 @@ function room(pr:PlanRoom,style:UpperRoom['style']):UpperRoom {
     description:`${floorLabel(pr.floor)} ${pr.name}입니다.${pr.annex?'':` ${roomViewLabel(pr)} 쪽 방이에요.`} 가구는 공간 용도를 보여 주는 견본이고 실제와 다를 수 있어요.`};
   if(pr.name==='급식실')entry.description='B동 도서관 층 입구에서 안쪽 계단으로 한 층 내려오는 큰 홀이에요. 긴 식탁과 벤치가 줄지어 있고, 동쪽 끝에 조리실이 붙어 있어요.';
   upperRooms.push(entry);
+  const placedBoxes:Rect[]=[];
   const add=(kind:UpperFurniture['kind'],cx:number,cz:number,width:number,depth:number)=>{
     const r={minX:cx-width/2,maxX:cx+width/2,minZ:cz-depth/2,maxZ:cz+depth/2};
     // 계단 구멍과 겹치는 가구는 놓지 않는다. 급식실은 계단이 홀로 내려오므로 둘레도 넉넉히 비운다.
     const margin=style==='dining'?.45:0;
     if(stairGroundObstacles.some(s=>r.minX<s.maxX+margin&&r.maxX>s.minX-margin&&r.minZ<s.maxZ+margin&&r.maxZ>s.minZ-margin))return;
     if(style==='dining'&&stairRects.some(s=>r.minX<s.maxX+margin&&r.maxX>s.minX-margin&&r.minZ<s.maxZ+margin&&r.maxZ>s.minZ-margin))return;
+    // 용도별 가구 모형(교탁·피아노 등)과 겹치는 기본 책상·벤치는 놓지 않는다.
+    if(placedBoxes.some(b=>r.minX<b.maxX+.05&&r.maxX>b.minX-.05&&r.minZ<b.maxZ+.05&&r.maxZ>b.minZ-.05))return;
     upperFurniture.push({floor:pr.floor,roomId:id,kind,rect:r});
   };
   // 문이 있는 벽에서 안쪽으로 u m, 그 벽을 따라 v m 떨어진 자리(m)를 월드 좌표로.
@@ -62,12 +66,42 @@ function room(pr:PlanRoom,style:UpperRoom['style']):UpperRoom {
     const p=at(u,v),alongX=sideAxis(side)==='z';
     add(kind,p.x,p.z,alongX?along:inward,alongX?inward:along);
   };
-  if(style==='classroom') {
+  // 용도별 가구 모형: 문 앞 통로·방 밖·계단 구멍·다른 모형과 겹치거나 상주 인물이 서는 자리에 걸리면 놓지 않는다.
+  const inward:Record<Side,[number,number]>={north:[0,1],south:[0,-1],east:[-1,0],west:[1,0]};
+  const alongWall:Record<Side,[number,number]>={north:[1,0],south:[1,0],east:[0,1],west:[0,1]};
+  const avoid:Point[]=pr.name==='교장실'?[{x:c.x,z:c.z-.5}]:pr.name==='1층 교무실'?[{x:c.x+2.5,z:c.z}]:[];
+  const lane:Rect=side==='south'?{minX:door.x-.9,maxX:door.x+.9,minZ:door.z-1.3,maxZ:door.z}:side==='north'?{minX:door.x-.9,maxX:door.x+.9,minZ:door.z,maxZ:door.z+1.3}:side==='east'?{minX:door.x-1.3,maxX:door.x,minZ:door.z-.9,maxZ:door.z+.9}:{minX:door.x,maxX:door.x+1.3,minZ:door.z-.9,maxZ:door.z+.9};
+  const hit=(a:Rect,b:Rect,margin=0)=>a.minX<b.maxX+margin&&a.maxX>b.minX-margin&&a.minZ<b.maxZ+margin&&a.maxZ>b.minZ-margin;
+  const place=(model:ClassroomModel,u:number,v:number,face:Face):boolean=>{
+    const p=at(u,v),forward=inward[side],sideways=alongWall[side];
+    const dir:[number,number]=face==='in'?forward:face==='out'?[-forward[0],-forward[1]]:face==='up'?sideways:[-sideways[0],-sideways[1]];
+    const rotation=Math.atan2(dir[0],dir[1]),r=pieceRect({model,x:p.x,z:p.z,rotation});
+    if(r.minX<rect.minX-1e-6||r.maxX>rect.maxX+1e-6||r.minZ<rect.minZ-1e-6||r.maxZ>rect.maxZ+1e-6)return false;
+    if(!pr.open&&hit(r,lane))return false;
+    if(stairGroundObstacles.some(s=>hit(r,s)))return false;
+    if(placedBoxes.some(b=>hit(r,b,.05)))return false;
+    if(avoid.some(a=>hit(r,{minX:a.x-.7,maxX:a.x+.7,minZ:a.z-.7,maxZ:a.z+.7})))return false;
+    // 벽이나 다른 가구와 0.4~1.2 m 틈은 사람이 서 있을 수는 있어도 길 찾기가 지나지 못하는 막힌 구석이 된다(0.4 m 미만은 서 있을 수 없어 괜찮다). 붙이거나 더 띄운다.
+    const narrow=(distance:number)=>distance>.4&&distance<1.2;
+    if([r.minX-rect.minX,rect.maxX-r.maxX,r.minZ-rect.minZ,rect.maxZ-r.maxZ].some(narrow))return false;
+    for(const b of placedBoxes) {
+      const sideBySideX=r.minZ<b.maxZ&&r.maxZ>b.minZ,sideBySideZ=r.minX<b.maxX&&r.maxX>b.minX;
+      if(sideBySideX&&(narrow(r.minX-b.maxX)||narrow(b.minX-r.maxX)))return false;
+      if(sideBySideZ&&(narrow(r.minZ-b.maxZ)||narrow(b.minZ-r.maxZ)))return false;
+    }
+    upperFurniture.push({floor:pr.floor,roomId:id,kind:'model',model,x:p.x,z:p.z,rotation,rect:r});
+    placedBoxes.push(r);
+    return true;
+  };
+  const detail=roomDetails(pr.name,style,{L:lateral,D:deep,place});
+  if(detail==='replace') {
+    // 방 용도에 맞는 가구 모형이 기본 책상·벤치를 대신한다.
+  } else if(style==='classroom') {
     // 서쪽 벽의 칠판을 보고 앉는다. 문 앞 1.6 m는 비운다.
     const inward=(m:number)=>side==='south'?rect.maxZ-m:rect.minZ+m;
     const cols=Math.max(2,Math.floor((w-2.8)/1.2)),rows=Math.max(2,Math.floor((d-2.4)/1.05));
     for(let r=0;r<rows;r++)for(let k=0;k<cols;k++) {
-      const px=rect.minX+2.1+k*1.2,pz=inward(1.7+r*1.05);
+      const px=rect.minX+2.5+k*1.2,pz=inward(1.7+r*1.05);
       add('desk',px,pz,.5,.72);add('bench',px+.43,pz,.38,.42);
     }
   } else if(style==='lab') {
