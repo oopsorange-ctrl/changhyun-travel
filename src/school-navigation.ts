@@ -1,29 +1,13 @@
-import {places,furnishings,groundFurniture,fixedObstacles,floorVoids,schoolBounds,campusBounds,campusInteriors,campusFrontSolids,placeWalls,doorWidth,wallThickness,characterRadius,type Point,type Rect,type TourMode} from './school-layout.ts';
-import {portals,portalLeaf,stairGroundObstacles,stairSupport,surfaceHeight,groundHeight,diningHall,diningVestibule} from './school-structure.ts';
-import {campusWalkAreas,campusDoorways,containsOutdoor,campusHeight,rostrum,insideCampusBoundary,gateApproach} from './school-outdoors.ts';
-import {upperRooms,upperFurniture,upperProps,upperResidentObstacles,upperRoomWalls,upperDoorLeaf,upperFloorSurface,walkingFloor,onFloorLevel} from './school-upper-floors.ts';
-import {floorRise} from './school-structure.ts';
+import {fixedObstacles,characterRadius,type Point,type Rect,type TourMode} from './school-layout.ts';
+import {stairGroundObstacles,stairSupport,surfaceHeight,floorRise} from './school-structure.ts';
+import {campusBounds,campusSolids,campusHeight,insideCampusBoundary} from './school-outdoors.ts';
+import {upperRooms,upperFurniture,upperProps,upperResidentObstacles,upperRoomWalls,upperDoorLeaf,upperFloorSurface,floorBounds,walkingFloor,onFloorLevel} from './school-upper-floors.ts';
 
-const roomWalls=places.filter(p=>p.enterable).flatMap(placeWalls);
-const solidServices=places.filter(p=>p.kind==='service' && !portals.some(portal=>portal.id===p.id) && !/복도|통로|현관|계단|로비|출입구|출입문|유리문|홀/.test(p.name)).flatMap(p=>p.id==='dining'?[
-  {...p.rect,minX:diningVestibule.maxX,maxZ:diningHall.minZ},
-  {...p.rect,maxX:diningVestibule.maxX,maxZ:diningVestibule.minZ},
-]:[p.rect]);
 const campusOuter:Rect=campusBounds;
-const campusExclusions:Rect[]=[
-  rostrum,
-  ...campusFrontSolids.flatMap(r=>{
-    // The court exit crosses the lobby facade before the visitor has cleared its thickness.
-    const doorway=campusDoorways[2];
-    const a=Math.max(r.minX,doorway.minX),b=Math.min(r.maxX,doorway.maxX),c=Math.max(r.minZ,doorway.minZ),d=Math.min(r.maxZ,doorway.maxZ);
-    if(a>=b||c>=d)return [r];
-    return [{...r,maxX:a},{...r,minX:b},{minX:a,maxX:b,minZ:r.minZ,maxZ:c},{minX:a,maxX:b,minZ:d,maxZ:r.maxZ}].filter(r=>r.maxX>r.minX&&r.maxZ>r.minZ);
-  }),
-];
 const gridStep=.5;
 const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.z-b.z);
 const finite=(p:Point)=>Number.isFinite(p.x)&&Number.isFinite(p.z);
-const onCampusSurface=(p:Point)=>Array.from({length:8},(_,i)=>({x:p.x+Math.cos(i*Math.PI/4)*characterRadius,z:p.z+Math.sin(i*Math.PI/4)*characterRadius})).every(p=>(insideCampusBoundary(p)||containsOutdoor(p,gateApproach))&&campusWalkAreas.some(r=>containsOutdoor(p,r))&&(!campusInteriors.some(r=>containsOutdoor(p,r))||campusDoorways.some(r=>containsOutdoor(p,r))));
+const ring=(p:Point)=>Array.from({length:8},(_,i)=>({x:p.x+Math.cos(i*Math.PI/4)*characterRadius,z:p.z+Math.sin(i*Math.PI/4)*characterRadius}));
 export function schoolInputDirection(x:number,y:number):Point {
   const length=Math.hypot(x,y)*Math.SQRT2;
   if(!length)return {x:0,z:0};
@@ -33,20 +17,13 @@ export function schoolInputDirection(x:number,y:number):Point {
 let geometryKey='';
 let obstacles:Rect[]=[];
 
+/** 모든 층(1층 포함)이 같은 방식으로 막힌다: 방 벽, 닫힌 문, 가구, 인물, 계단 구멍. */
 function collisionGeometry(doors:ReadonlySet<string>,floor=1):Rect[] {
   const key=`${floor}:${[...doors].sort().join(',')}`;
   if(obstacles.length && key===geometryKey) return obstacles;
   geometryKey=key;
-  if(floor>1) {
-    const rooms=upperRooms.filter(r=>r.floor===floor);
-    obstacles=[...rooms.flatMap(upperRoomWalls),...rooms.filter(r=>!doors.has(r.id)).map(upperDoorLeaf),...upperFurniture.filter(f=>f.floor===floor).map(f=>f.rect),...upperProps.filter(p=>p.floor===floor&&p.solid).map(p=>p.rect),...upperResidentObstacles.filter(p=>p.floor===floor).map(p=>p.rect),...stairGroundObstacles];
-    return obstacles;
-  }
-  const closedLeaves=places.filter(p=>p.enterable&&!doors.has(p.id)).map(p=>({
-    minX:p.door.x-doorWidth/2,maxX:p.door.x+doorWidth/2,
-    minZ:p.door.z-wallThickness/2,maxZ:p.door.z+wallThickness/2,
-  }));
-  obstacles=[...roomWalls,...solidServices,...furnishings.map(f=>f.rect),...groundFurniture.filter(f=>f.solid).map(f=>f.rect),...fixedObstacles,...stairGroundObstacles,...closedLeaves,...portals.filter(p=>!doors.has(p.id)).map(portalLeaf)];
+  const rooms=upperRooms.filter(r=>r.floor===floor&&!r.open);
+  obstacles=[...rooms.flatMap(upperRoomWalls),...rooms.filter(r=>!doors.has(r.id)).map(upperDoorLeaf),...upperFurniture.filter(f=>f.floor===floor).map(f=>f.rect),...upperProps.filter(p=>p.floor===floor&&p.solid).map(p=>p.rect),...upperResidentObstacles.filter(p=>p.floor===floor).map(p=>p.rect),...stairGroundObstacles,...(floor===1?fixedObstacles:[])];
   return obstacles;
 }
 
@@ -89,29 +66,27 @@ function segmentBlocked(start:Point,end:Point,rect:Rect):boolean {
 
 function walkable(point:Point,mode:TourMode,geometry:Rect[],floor=1):boolean {
   if(!finite(point)) return false;
-  const r=characterRadius,bounds=mode==='floor1'?schoolBounds:campusOuter;
+  const r=characterRadius,bounds=mode==='floor1'?floorBounds[floor]!:campusOuter;
   if(point.x<bounds.minX+r||point.x>bounds.maxX-r||point.z<bounds.minZ+r||point.z>bounds.maxZ-r) return false;
-  if(mode==='campus'&&campusExclusions.some(rect=>pointRectDistanceSq(point,rect)<=r*r)) return false;
-  if(mode==='campus'&&!onCampusSurface(point))return false;
-  if(mode==='floor1'&&floor===1&&floorVoids.some(rect=>pointRectDistanceSq(point,rect)<=r*r)) return false;
-  if(mode==='floor1'&&floor>1&&!Array.from({length:8},(_,i)=>({x:point.x+Math.cos(i*Math.PI/4)*r,z:point.z+Math.sin(i*Math.PI/4)*r})).every(p=>upperFloorSurface(p,floor)))return false;
+  if(mode==='campus') return insideCampusBoundary(point)&&!campusSolids.some(rect=>pointRectDistanceSq(point,rect)<=r*r);
+  if(!ring(point).every(p=>upperFloorSurface(p,floor)))return false;
   return !geometry.some(rect=>pointRectDistanceSq(point,rect)<=r*r);
 }
 
 function clearSegment(start:Point,end:Point,mode:TourMode,geometry:Rect[],floor=1):boolean {
   if(!walkable(start,mode,geometry,floor)||!walkable(end,mode,geometry,floor)) return false;
-  if(mode==='campus'&&campusExclusions.some(rect=>segmentBlocked(start,end,rect))) return false;
   if(mode==='campus') {
+    if(campusSolids.some(rect=>segmentBlocked(start,end,rect)))return false;
+    // 비탈과 계단은 이어지지만 옹벽(높이가 갑자기 바뀌는 곳)은 넘을 수 없다.
     let height=campusHeight(start);
     for(let i=1,n=Math.max(1,Math.ceil(distance(start,end)/.1));i<=n;i++) {
-      const p={x:start.x+(end.x-start.x)*i/n,z:start.z+(end.z-start.z)*i/n},nextHeight=campusHeight(p);
-      if(!onCampusSurface(p)||Math.abs(nextHeight-height)>.12)return false;
-      height=nextHeight;
+      const next=campusHeight({x:start.x+(end.x-start.x)*i/n,z:start.z+(end.z-start.z)*i/n});
+      if(Math.abs(next-height)>.12)return false;
+      height=next;
     }
+    return true;
   }
-  if(mode==='floor1'&&floor===1&&floorVoids.some(rect=>segmentBlocked(start,end,rect))) return false;
-  if(mode==='floor1'&&floor>1)for(let i=1,n=Math.ceil(distance(start,end)/.12);i<n;i++)if(!walkable({x:start.x+(end.x-start.x)*i/n,z:start.z+(end.z-start.z)*i/n},mode,geometry,floor))return false;
-  // The outer bound is convex; safe endpoints also contain the entire segment.
+  for(let i=1,n=Math.ceil(distance(start,end)/.12);i<n;i++)if(!walkable({x:start.x+(end.x-start.x)*i/n,z:start.z+(end.z-start.z)*i/n},mode,geometry,floor))return false;
   return !geometry.some(rect=>segmentBlocked(start,end,rect));
 }
 
@@ -146,7 +121,7 @@ export function moveSchoolVisitor(start:VisitorPosition,delta:Point,mode:TourMod
       position={...next,y};continue;
     }
     const floor=mode==='floor1'?walkingFloor(position.y):1;
-    const y=mode==='floor1'?(floor>1?(floor-1)*floorRise:groundHeight(next)):campusHeight(next);
+    const y=mode==='floor1'?(floor-1)*floorRise:campusHeight(next);
     if(Math.abs(y-position.y)>.12)break;
     const moved=moveInSchool(position,{x:next.x-position.x,z:next.z-position.z},mode,openDoors,floor);
     if(moved.x===position.x&&moved.z===position.z)break;
@@ -179,7 +154,7 @@ const directions=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
 function navigationGrid(mode:TourMode,geometry:Rect[],floor=1):Grid {
   const key=`${mode}:${geometryKey}`;
   if(cachedGrid?.key===key) return cachedGrid;
-  const bounds=mode==='floor1'?schoolBounds:campusOuter;
+  const bounds=mode==='floor1'?floorBounds[floor]!:campusOuter;
   const cols=Math.floor((bounds.maxX-bounds.minX)/gridStep),rows=Math.floor((bounds.maxZ-bounds.minZ)/gridStep);
   const grid:Grid={key,minX:bounds.minX+gridStep/2,minZ:bounds.minZ+gridStep/2,cols,rows,valid:new Uint8Array(cols*rows),edges:new Uint8Array(cols*rows*8)};
   for(let i=0;i<grid.valid.length;i++) grid.valid[i]=walkable(gridPoint(grid,i),mode,geometry,floor)?1:0;

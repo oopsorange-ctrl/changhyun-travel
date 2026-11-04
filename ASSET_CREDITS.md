@@ -29,11 +29,10 @@ Meshy 모형과 그 파생본은 CC BY 4.0이다. 공유할 때는 제작 정보
 
 > 생성 요청문: A single original cute human island explorer, full body in neutral A-pose for animation rigging, arms angled down 40 degrees away from torso, hands empty and separate, feet apart on ground. Chibi 2.5-heads-tall proportions, very large round head, short stocky torso, short thick limbs, rounded mitten hands, round cream boots. (이하 생략)
 
-## 안내자 루미의 얼굴
+## 안내자 쩡이의 얼굴
 
-- 화면 아래 안내 말풍선의 얼굴 그림 `public/lumi-portrait.png`(256×256 투명 PNG).
-- 원본 모형: 수달 연구원 루미. 제작 dossamlab, 2026-10-04, Meshy 6 Lite, CC BY 4.0, 생성 작업 식별자(텍스처) `01a106f9-b6c9-72a9-ab7c-b99152235ace`. Blender로 다듬은 모형을 정면에서 촬영한 파생 이미지다. 3D 모형 자체는 이 저장소에 들어 있지 않다.
-- 다른 학교는 학교 마스코트 그림으로 바꿔도 된다(`src/school-main.ts`의 안내 말풍선).
+- 화면 아래 안내 말풍선의 얼굴 그림 `public/jjeong-portrait.png`(256×256 원형 PNG). 창현고 안내자 고양이 쩡이의 사진을 얼굴 중심으로 잘라 만들었다. 원본 사진은 `references/`에만 있고 저장소에 올리지 않는다.
+- 견본의 안내자 루미(수달) 그림은 이 저장소에서 뺐다. 다른 학교는 학교 마스코트로 바꿔도 된다(`src/school-main.ts`의 안내 말풍선).
 
 ## 학교 건물·가구 모형
 

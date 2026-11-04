@@ -1,9 +1,12 @@
 import type {Point,Rect,Place} from './school-layout.ts';
 import type {FloorCell} from './school-floor-data.ts';
-import {planRect,stairs,stairPoint,floorRise} from './school-structure.ts';
-import {classroomLayout,corridorLayout,pieceRect,propSpot,type ClassroomModel,type ClassroomProp} from './school-classrooms.ts';
+import {planRooms,planCorridors,floorCount,floorList,lowestFloor,floorLabel,roomView,roomViewLabel,type PlanRoom,type PlanStyle,type Side} from './changhyun-plan.ts';
+import {stairs,stairLanding,stairGroundObstacles,floorRise} from './school-structure.ts';
+import {planFloorData} from './school-plan-data.ts';
+import type {ClassroomModel,ClassroomProp} from './school-classrooms.ts';
 
-export type UpperRoom=Place&{floor:number;axis:'x'|'z';style:'classroom'|'office'|'lab'|'hall'|'gym'|'gallery'|'toilet'};
+/** 모든 층의 방(본관 1~6층과 별관 0·-1·-2층). 이름은 예전 견본에서 왔지만 1층도 같은 생성기로 만든다. */
+export type UpperRoom=Place&{floor:number;axis:'x'|'z';doorSide:Side;style:'classroom'|'office'|'lab'|'hall'|'gym'|'gallery'|'toilet'|'dining'|'library';row:'north'|'south';view?:'정원'|'운동장';open?:boolean};
 export type UpperFurniture={floor:number;roomId:string;rect:Rect;kind:'desk'|'bench'|'shelf'|'sink'|'toilet'|'model';model?:ClassroomModel;x?:number;z?:number;y?:number;rotation?:number};
 /** Walk-through furniture without collision: floor mats, balloon arches. */
 export type UpperDecor={floor:number;roomId:string;model:ClassroomModel;x:number;z:number;y:number;rotation:number};
@@ -11,141 +14,115 @@ export type UpperProp=ClassroomProp&{floor:number;roomId:string;rect:Rect;spot:P
 export const upperRooms:UpperRoom[]=[];
 export const upperDecor:UpperDecor[]=[];
 export const upperProps:UpperProp[]=[];
-/** Rooms furnished from the walk-through videos rather than the generic sample. */
+/** 영상 등으로 따로 꾸민 방. 창현고는 아직 없다. */
 export const customRooms=new Set<string>();
 export const upperCorridors:Record<number,Rect[]>={};
 export const upperFurniture:UpperFurniture[]=[];
-export const upperPlanData:Record<number,FloorCell[]>={};
-export const walkingFloor=(height:number)=>Math.max(1,Math.min(5,Math.round(height/floorRise)+1));
+export const upperPlanData:Record<number,FloorCell[]>=planFloorData;
+/** 지금 높이에서 걷고 있는 층. 0·-1·-2층은 별관(지하 쪽)이다. */
+export const walkingFloor=(height:number)=>Math.max(lowestFloor,Math.min(floorCount,Math.round(height/floorRise)+1));
 export const onFloorLevel=(height:number)=>Math.abs(height-(walkingFloor(height)-1)*floorRise)<.12;
 const mid=(r:Rect):Point=>({x:(r.minX+r.maxX)/2,z:(r.minZ+r.maxZ)/2});
 const within=(p:Point,r:Rect)=>p.x>=r.minX&&p.x<=r.maxX&&p.z>=r.minZ&&p.z<=r.maxZ;
 
-/**
- * Rooms keep one door. The plan (A-204~207) gives every room of 8 m or more a door at each
- * end of its corridor wall; we keep the one the walk-through video enters by. 'start' is the
- * west end of a north/south wall or the north end of an east/west wall, a number is metres
- * from that end. Homerooms copy 인문학교실 (door at the board end); other large rooms use
- * the start end, and small rooms keep a centred door.
- */
-const doorEnds:Record<string,'start'|'end'|number>={
-  '2:물리/지학실':'end','2:생명과학실':'end','2:화학실':'end','2:세미나실':'end','2:온라인학습실':'start','2:체력단련실':'start',
-  '3:컴퓨터실':'end','3:스마트AI교실':'end','3:미술실':'end','3:음악실':'end','3:인문학교실':'start','3:창의상상라운지':4.2,
-  '4:청학스터디존':9.9,
-};
-// The door leaf (1.8 m opening) stays clear of the corner column.
-const doorInset=1.3;
+const styleOf:Partial<Record<PlanStyle,UpperRoom['style']>>={classroom:'classroom',office:'office',lab:'lab',hall:'hall',toilet:'toilet',dining:'dining',library:'library'};
+/** 자주 찾는 방은 읽기 쉬운 고정 ID를 준다. */
+const fixedIds:Record<string,string>={'1:교장실':'principal','1:행정실':'admin','1:1층 교무실':'teachers-1','1:당직실':'night-duty','1:시청각실':'av-hall','1:오프라인실':'offline','-2:급식실':'dining','-1:도서관':'library','-2:조리실':'kitchen','0:음악실(합창)':'music','0:미술1실(회화)':'art-1','0:미술2실(조소)':'art-2'};
+const doorDepth=1.05;
+const sideAxis=(side:Side)=>side==='east'||side==='west'?'x':'z';
+const stairRects=stairs.map(s=>s.rect);
 
-function room(floor:number,name:string,x:number,z:number,w:number,d:number,side:'north'|'south'|'east'|'west',style:UpperRoom['style'],area?:number) {
-  const rect=planRect(x,z,w,d),c=mid(rect),axis=side==='east'||side==='west'?'x':'z',length=axis==='x'?d:w;
-  const end=doorEnds[`${floor}:${name}`]??(length>=8&&['classroom','office','lab'].includes(style)?'start':undefined);
-  const along=(min:number,max:number,mid:number)=>end==='start'?min+doorInset:end==='end'?max-doorInset:typeof end==='number'?min+end:mid;
-  const door=axis==='x'?{x:side==='east'?rect.maxX:rect.minX,z:along(rect.minZ,rect.maxZ,c.z)}:{x:along(rect.minX,rect.maxX,c.x),z:side==='south'?rect.maxZ:rect.minZ};
-  const approach={x:door.x+(side==='east'?1.05:side==='west'?-1.05:0),z:door.z+(side==='south'?1.05:side==='north'?-1.05:0)};
-  const id=`floor-${floor}-room-${upperRooms.filter(r=>r.floor===floor).length}`;
-  const entry:UpperRoom={id,name,rect,door,approach,floor,axis,style,kind:'room',enterable:true,area,
-    areaNote:'2023년 배치도의 대응 공간 참고값입니다. 현재 칸막이와 실측 면적은 다를 수 있습니다.',
-    description:`${floor}층 ${name}입니다. 건축 도면의 구조 치수에 현재 실 이름을 대응했습니다. 가구는 공간 용도를 보여 주는 견본입니다.`};
+function room(pr:PlanRoom,style:UpperRoom['style']):UpperRoom {
+  const rect=pr.rect,c=mid(rect),w=rect.maxX-rect.minX,d=rect.maxZ-rect.minZ;
+  // 본관: 북줄 방은 남쪽(복도 쪽) 벽에, 남줄 방은 북쪽(복도 쪽) 벽에 문이 있다. 별관은 문이 열린 벽을 데이터에 적었다.
+  const side:Side=pr.door??(pr.row==='north'?'south':'north');
+  const door=side==='south'?{x:c.x,z:rect.maxZ}:side==='north'?{x:c.x,z:rect.minZ}:side==='east'?{x:rect.maxX,z:c.z}:{x:rect.minX,z:c.z};
+  // 열린 홀은 문이 없으므로 안내 도착 자리를 홀 안쪽 가장자리로 둔다.
+  const approach=pr.open?{x:door.x,z:door.z-.7}:side==='south'?{x:door.x,z:door.z+doorDepth}:side==='north'?{x:door.x,z:door.z-doorDepth}:side==='east'?{x:door.x+doorDepth,z:door.z}:{x:door.x-doorDepth,z:door.z};
+  const id=fixedIds[`${pr.floor}:${pr.name}`]??`floor-${pr.floor}-room-${upperRooms.filter(r=>r.floor===pr.floor).length}`;
+  const view=pr.annex?undefined:roomView(pr);
+  const entry:UpperRoom={id,name:pr.name,rect,door,approach,floor:pr.floor,axis:sideAxis(side),doorSide:side,style,row:pr.row,view,kind:'room',enterable:!pr.open,open:!!pr.open,area:Math.round(w*d),
+    areaNote:'배치도를 비율로 옮긴 참고값입니다. 실제 면적이 아닙니다.',
+    description:`${floorLabel(pr.floor)} ${pr.name}입니다.${pr.annex?'':` ${roomViewLabel(pr)} 쪽 방이에요.`} 가구는 공간 용도를 보여 주는 견본이고 실제와 다를 수 있어요.`};
+  if(pr.name==='급식실')entry.description='B동 도서관 층 입구에서 안쪽 계단으로 한 층 내려오는 큰 홀이에요. 긴 식탁과 벤치가 줄지어 있고, 동쪽 끝에 조리실이 붙어 있어요.';
   upperRooms.push(entry);
-  const layout=classroomLayout(floor,name,rect,id,side==='north'?'n':side==='south'?'s':side==='east'?'e':'w');
-  if(layout) {
-    customRooms.add(id);
-    entry.description=`${floor}층 ${name}입니다. 공간 용도에 맞는 대표 가구를 배치했어요. 위치와 개수는 실제와 다를 수 있어요.`;
-    placePieces(floor,id,layout.pieces);
-    for(const prop of layout.props)upperProps.push({...prop,floor,roomId:id,rect:pieceRect(prop),spot:propSpot(prop)});
-    return entry;
-  }
-  const add=(kind:UpperFurniture['kind'],cx:number,cz:number,width:number,depth:number)=>upperFurniture.push({floor,roomId:id,kind,rect:{minX:cx-width/2,maxX:cx+width/2,minZ:cz-depth/2,maxZ:cz+depth/2}});
+  const add=(kind:UpperFurniture['kind'],cx:number,cz:number,width:number,depth:number)=>{
+    const r={minX:cx-width/2,maxX:cx+width/2,minZ:cz-depth/2,maxZ:cz+depth/2};
+    // 계단 구멍과 겹치는 가구는 놓지 않는다. 급식실은 계단이 홀로 내려오므로 둘레도 넉넉히 비운다.
+    const margin=style==='dining'?.45:0;
+    if(stairGroundObstacles.some(s=>r.minX<s.maxX+margin&&r.maxX>s.minX-margin&&r.minZ<s.maxZ+margin&&r.maxZ>s.minZ-margin))return;
+    if(style==='dining'&&stairRects.some(s=>r.minX<s.maxX+margin&&r.maxX>s.minX-margin&&r.minZ<s.maxZ+margin&&r.maxZ>s.minZ-margin))return;
+    upperFurniture.push({floor:pr.floor,roomId:id,kind,rect:r});
+  };
+  // 문이 있는 벽에서 안쪽으로 u m, 그 벽을 따라 v m 떨어진 자리(m)를 월드 좌표로.
+  const lateral=side==='north'||side==='south'?w:d,deep=side==='north'||side==='south'?d:w;
+  const at=(u:number,v:number):Point=>side==='south'?{x:rect.minX+v,z:rect.maxZ-u}:side==='north'?{x:rect.minX+v,z:rect.minZ+u}:side==='east'?{x:rect.maxX-u,z:rect.minZ+v}:{x:rect.minX+u,z:rect.minZ+v};
+  // 가구 크기는 (벽을 따르는 길이, 안쪽 깊이)로 적고, 동·서 문 방은 가로세로를 바꿔 놓는다.
+  const put=(kind:UpperFurniture['kind'],u:number,v:number,along:number,inward:number)=>{
+    const p=at(u,v),alongX=sideAxis(side)==='z';
+    add(kind,p.x,p.z,alongX?along:inward,alongX?inward:along);
+  };
   if(style==='classroom') {
-    for(let row=0;row<4;row++)for(let col=0;col<5;col++) {
-      const px=rect.minX+1.3+col*1.25,pz=rect.minZ+2+row*1.18;
-      add('desk',px,pz,.72,.5);add('bench',px,pz+.43,.42,.38);
+    // 서쪽 벽의 칠판을 보고 앉는다. 문 앞 1.6 m는 비운다.
+    const inward=(m:number)=>side==='south'?rect.maxZ-m:rect.minZ+m;
+    const cols=Math.max(2,Math.floor((w-2.8)/1.2)),rows=Math.max(2,Math.floor((d-2.4)/1.05));
+    for(let r=0;r<rows;r++)for(let k=0;k<cols;k++) {
+      const px=rect.minX+2.1+k*1.2,pz=inward(1.7+r*1.05);
+      add('desk',px,pz,.5,.72);add('bench',px+.43,pz,.38,.42);
     }
   } else if(style==='lab') {
-    for(let row=0;row<2;row++)for(let col=0;col<3;col++)add('desk',rect.minX+2+col*3.1,rect.minZ+2.5+row*3,1.9,.9);
+    const cols=Math.max(1,Math.floor((lateral-1.6)/2.6)),rows=Math.max(1,Math.floor((deep-3)/2.6));
+    // 좁은 방(베이스실·알토실 등)에서는 양옆으로 1 m씩 지나다닐 수 있게 책상을 줄인다.
+    const len=Math.min(1.9,Math.max(.9,lateral-2.1));
+    for(let r=0;r<rows;r++)for(let k=0;k<cols;k++)put('desk',2.4+r*2.6,(lateral-(cols-1)*2.6)/2+k*2.6,len,.9);
   } else if(style==='office') {
-    const count=Math.min(3,Math.floor((w-1)/2.4));
-    for(let i=0;i<count;i++)add('desk',rect.minX+1.2+i*2.4,rect.minZ+(axis==='z'?2.3:1.1),1.4,.75);
+    const count=Math.max(1,Math.min(5,Math.floor((lateral-1)/2.4)));
+    for(let i=0;i<count;i++)put('desk',deep-1.1,1.2+i*Math.min(2.4,(lateral-2.4)/Math.max(1,count-1)),1.4,.75);
   } else if(style==='toilet') {
-    add('sink',rect.minX+.7,rect.minZ+.7,.62,.48);add('toilet',rect.maxX-.7,rect.minZ+.8,.5,.7);
-  } else if(style==='gallery') {
-    for(let i=0;i<6;i++)add('bench',rect.minX+1.3,rect.minZ+1.5+i*2.2,1.8,.55);
+    put('sink',1.7,Math.min(.6,lateral/2),.62,.48);put('toilet',2.5,Math.max(lateral-.6,lateral/2),.5,.7);
   } else if(style==='hall') {
-    for(let row=0;row<4;row++)for(let col=0;col<5;col++)add('bench',rect.minX+3+col*5,rect.minZ+2+row*1.8,2.8,.6);
+    const cols=Math.max(2,Math.floor((lateral-3)/2.2)),rows=Math.max(2,Math.floor((deep-3)/1.2));
+    for(let r=0;r<rows;r++)for(let k=0;k<cols;k++)put('bench',2.2+r*1.2,2.2+k*(lateral-4.4)/Math.max(1,cols-1),1.6,.55);
+  } else if(style==='library') {
+    // 안쪽 벽과 양옆 벽을 따라 서가, 가운데 통로를 둔 서가 두 줄, 문 양옆에 열람 책상.
+    put('shelf',deep-.6,lateral/2,lateral-1.2,.5);
+    const sideLength=Math.max(1,deep-3.4);
+    for(const v of [.4,lateral-.4])put('shelf',2+sideLength/2,v,.5,sideLength);
+    for(const v of [lateral*.3,lateral*.7])for(const u of [deep-2.8,deep-4.6])put('shelf',u,v,Math.min(2.4,lateral*.25),.5);
+    for(const v of [1.8,lateral-1.8])put('desk',2,v,1.8,.9);
+  } else if(style==='dining') {
+    // 긴 식탁(양쪽 벤치) 두 줄. 계단 구멍을 피해 놓는다.
+    // 식탁 사이 1.5 m 통로를 두고, 가운데(문 앞)는 비워 둔다.
+    for(const u of [2,5.2,8.4])for(let k=-5;k<5;k++) {
+      const v=lateral/2+(k+.5)*4.5;
+      if(v<1.8||v>lateral-1.8)continue;
+      put('desk',u,v,3,1);put('bench',u-.75,v,3,.38);put('bench',u+.75,v,3,.38);
+    }
   }
   return entry;
 }
+for(const pr of planRooms) {const style=styleOf[pr.style];if(style)room(pr,style);}
 
-function placePieces(floor:number,roomId:string,pieces:ReturnType<typeof corridorLayout>) {
-  for(const piece of pieces) {
-    const placed={model:piece.model,x:piece.x,z:piece.z,y:piece.y??0,rotation:piece.rotation};
-    if(piece.solid)upperFurniture.push({floor,roomId,kind:'model',rect:pieceRect(piece),...placed});
-    else upperDecor.push({floor,roomId,...placed});
-  }
+for(const floor of floorList) {
+  const landings=stairs.filter(s=>s.bottomFloor<=floor&&s.topFloor>=floor).map(stairLanding);
+  upperCorridors[floor]=[...planCorridors[floor]!.map(r=>({...r})),...landings];
 }
 
-for(const floor of [2,3,4,5]) {
-  // A-204..207: same 2.7 m main corridors, 4.5 m east setback, 3 m north spine.
-  upperCorridors[floor]=[
-    planRect(0,45.6,36,2.7),planRect(36,41.1,9,7.2),planRect(45,41.1,36,2.7),
-    planRect(42,11.6,3,29.5),planRect(78.3,11.6,2.7,25),
-    planRect(72,36.6,9,4.5),planRect(4.5,41.1,9,4.5),
-    planRect(45,31.6,3,9.5),planRect(48,39.1,24,2),
-  ];
-  // Keep all four stair cores, including the central lobby stair, vertically aligned.
-  for(const stair of stairs) {
-    const a=stairPoint(stair,0,0),b=stairPoint(stair,1.2,4);
-    upperCorridors[floor].push({minX:Math.min(a.x,b.x),maxX:Math.max(a.x,b.x),minZ:Math.min(a.z,b.z),maxZ:Math.max(a.z,b.z)});
-  }
-  room(floor,floor===2?'진로진학상담부':`진학상담실${floor-2}`,0,41.1,4.5,4.5,'south','office',20.25);
-  const south=floor===2?[
-    ['Wee Class',9],['교무실',18],['C.B.S(방송실)',9],['시설관리실',4.5],['서버실',4.5],['보건실',9],['평가관리실',9],['온라인학습실',9],['학생안전부',9],
-  ] as const: (floor===3?['다목적실1','1-7','1-6','1-5','1-4','1-3','1-2','1-1','1학년교무실']:floor===4?['2-7','2-6','2-5','2-4','2-3','2-2','2-1','다목적실2','2학년교무실']:['3-6','3-5','3-4','3-3','3-2','3-1','다목적실4','다목적실3','3학년교무실']).map(name=>[name,9] as const);
-  let x=0;
-  for(const [name,width] of south){room(floor,name,x,x<45?48.3:43.8,width,7.5,'north',/^\d-\d|학습|다목적/.test(name)?'classroom':'office',width*7.5);x+=width;}
-  if(floor<=3) {
-    upperCorridors[floor].push(planRect(6,20.1,36,3));
-    const rows=floor===2?[['학부모실','생명과학실','물리/지학실','준비실'],['회의실','세미나실','화학실','준비실']]:[['물품보관실','컴퓨터실','스마트AI교실','교무실'],['미술준비실','미술실','음악실','음악준비실']];
-    for(let row=0;row<2;row++) {
-      let x=6;
-      for(let i=0;i<4;i++){const w=[4.5,13.5,13.5,4.5][i];room(floor,rows[row][i],x,row===0?11.6:23.1,w,8.5,row===0?'south':'north',w>5?'lab':'office',w*8.5);x+=w;}
-    }
-    if(floor===2) {
-      const hall=room(floor,'시청각실 (송천홀)',6,0,36,11.6,'east','hall',291.6);
-      // The north hall opens toward the top of the north spine, beside its stairs.
-      hall.door={x:1.5,z:-25.15};hall.approach={x:2.55,z:-25.15};
-      upperCorridors[floor].push(planRect(42,9,3,2.6));
-    }
-  } else if(floor===4)room(floor,'송학관(체육관)',6,11.6,36,20,'east','gym',720);
-  else {
-    room(floor,'교무실',37.5,11.6,4.5,4.5,'east','office',20);
-    room(floor,'송학관 관람석',37.5,16.1,4.5,15.5,'east','gallery');
-  }
-  if(floor<5)room(floor,floor===2?'교직원화장실(여)':'샤워실(남)',45,25.5,3,6.1,'west','toilet',floor===2?13.5:27);
-  if(floor===3)room(floor,'비품창고',45,18.5,4.5,7,'west','office');
-  if(floor===4)room(floor,'샤워실(여)',45,20,3,5.5,'west','toilet');
-  room(floor,'남학생화장실',48,31.6,3,7.5,'south','toilet',floor===2?27:40.5);
-  room(floor,'여학생화장실',51,31.6,3,7.5,'south','toilet',floor===2?27:40.5);
-  for(let i=0;i<2;i++)room(floor,floor===3?`교직원화장실(${i===0?'남':'여'})`:`화장실(${i===0?'남':'여'})`,70.2+i*4.05,3.9,4.05,7.7,'south','toilet',27);
-  upperCorridors[floor].push(planRect(70.2,11.6,8.1,1.4));
-  placePieces(floor,`floor-${floor}-east-corridor`,corridorLayout(floor));
-  const east=floor===2?['학생회실','남직원휴게실','여직원휴게실','체력단련실']:floor===3?['창의상상라운지','인문학교실']:floor===4?['자기주도학습실1','청학스터디존']:['자기주도학습실2','공감교실','교구보관실'];
-  const heights=floor===2?[6.2,4.2,4.2,9]:floor===3?[15.2,8.4]:floor===4?[8.4,15.2]:[8.4,6.8,8.4];
-  let z=13;
-  east.forEach((name,i)=>{room(floor,name,70.2,z,8.1,heights[i],'east',/학습|교실/.test(name)?'classroom':'office',/휴게실/.test(name)?34.02:68.04);z+=heights[i];});
-  if(floor>=4)room(floor,floor===4?'여교사화장실':'협의실',78.3,3.9,2.7,7.7,'south',floor===4?'toilet':'office',floor===4?20:27);
-  const cells:FloorCell[]=[];
-  const cell=(name:string,r:Rect)=>cells.push({name,col:1+(r.minX+40.5)/81*42,row:1+(r.minZ+35.55)/55.8*9,colSpan:(r.maxX-r.minX)/81*42,rowSpan:(r.maxZ-r.minZ)/55.8*9,border:true});
-  upperCorridors[floor].forEach(r=>cell('복도',r));upperRooms.filter(r=>r.floor===floor).forEach(r=>cell(r.name,r.rect));stairs.forEach(s=>cell(s.name,s.rect));upperPlanData[floor]=cells;
-}
+/** 들어갈 수 없는 칸(창고·서고·매점·엘리베이터)은 장면에서 닫힌 상자로 그린다. */
+export type ClosedBox={floor:number;name:string;style:PlanStyle;rect:Rect;row:'north'|'south'};
+export const closedBoxes:ClosedBox[]=planRooms.filter(r=>r.style==='service'||r.style==='elevator').map(r=>({floor:r.floor,name:r.name,style:r.style,rect:r.rect,row:r.row}));
 
-const viceOffice=upperRooms.find(room=>room.floor===2&&room.name==='교무실')!;
-export const upperResidents=[{model:'vice-principal-resident',floor:2,roomId:viceOffice.id,x:viceOffice.rect.minX+2.5,z:viceOffice.rect.minZ+3.5,rotation:0}];
-export const upperResidentObstacles=upperResidents.map(p=>({floor:p.floor,rect:{minX:p.x-.4,maxX:p.x+.4,minZ:p.z-.4,maxZ:p.z+.4}}));
-const upperSurfaces=Object.fromEntries([2,3,4,5].map(floor=>[floor,[...upperCorridors[floor],...upperRooms.filter(r=>r.floor===floor).map(r=>r.rect)]]));
+export const upperResidents:{model:string;floor:number;roomId:string;x:number;z:number;rotation:number}[]=[];
+export const upperResidentObstacles:{floor:number;rect:Rect}[]=[];
+const upperSurfaces:Record<number,Rect[]>=Object.fromEntries(floorList.map(floor=>[floor,[...upperCorridors[floor]!,...upperRooms.filter(r=>r.floor===floor).map(r=>r.rect)]]));
 export function upperFloorSurface(point:Point,floor:number):boolean {
   return (upperSurfaces[floor]??[]).some(r=>within(point,r));
 }
+/** 한 층에서 걸을 수 있는 바닥 전체를 감싸는 사각형(길찾기 격자와 카메라가 쓴다). */
+export const floorBounds:Record<number,Rect>=Object.fromEntries(floorList.map(floor=>{
+  const rects=upperSurfaces[floor]!;
+  return [floor,{minX:Math.min(...rects.map(r=>r.minX))-.5,maxX:Math.max(...rects.map(r=>r.maxX))+.5,minZ:Math.min(...rects.map(r=>r.minZ))-.5,maxZ:Math.max(...rects.map(r=>r.maxZ))+.5}];
+}));
 export function upperRoomWalls(room:UpperRoom):Rect[] {
   const r=room.rect,result:Rect[]=[],t=.08,d=.9;
   for(const axis of ['x','z'] as const)for(const at of axis==='x'?[r.minX,r.maxX]:[r.minZ,r.maxZ]) {

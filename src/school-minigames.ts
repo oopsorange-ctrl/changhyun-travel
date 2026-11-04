@@ -2,21 +2,24 @@ import {schoolConfig} from './school-config.ts';
 // Two light admission-day games for the creative lounge arcade cabinets.
 export type QuizQuestion={statement:string;answer:boolean;explanation:string};
 export type QuizRoom={name:string;floor:number};
+/** 퀴즈 문장에 쓰는 층 이름. 본관은 'N층', 별관(0·-1·-2)은 건물 이름이다. */
+export const quizFloorLabel=(floor:number)=>floor>=1?`${floor}층`:floor===0?'A동 건물':floor===-1?'B동 도서관 층':'B동 급식실 층';
+const quizFloors=[1,2,3,4,5,6,0,-1,-2];
 
 /** Floor-location O/X questions built from the walkable map, so every answer matches the tour. */
 export function makeFloorQuiz(rooms:QuizRoom[],random:()=>number=Math.random,count=5):QuizQuestion[] {
   const floors=new Map<string,Set<number>>();
   for(const room of rooms)floors.set(room.name,(floors.get(room.name)??new Set()).add(room.floor));
   // Names that exist on one floor only, without generic numbered rooms such as 1-3 or 다목적실2.
-  const pool=[...floors].filter(([name,set])=>set.size===1&&!/^\d-\d|\d$|화장실|창고|준비실|샤워실/.test(name)).map(([name,set])=>({name,floor:[...set][0]!}));
+  const pool=[...floors].filter(([name,set])=>set.size===1&&!/^\d-\d|\d$|화장실|창고|준비실|샤워실|계단|서고|엘리베이터/.test(name)).map(([name,set])=>({name,floor:[...set][0]!}));
   const picked:QuizRoom[]=[];
   while(picked.length<Math.min(count,pool.length)) {
     const room=pool.splice(Math.floor(random()*pool.length),1)[0]!;picked.push(room);
   }
   return picked.map(room=>{
-    const truth=random()<.5,others=[2,3,4,5].filter(f=>f!==room.floor);
+    const truth=random()<.5,others=quizFloors.filter(f=>f!==room.floor);
     const shown=truth?room.floor:others[Math.floor(random()*others.length)]!;
-    return {statement:`${room.name}은(는) ${shown}층에 있어요.`,answer:truth,explanation:`${room.name}은(는) ${room.floor}층에 있어요.`};
+    return {statement:`${room.name}은(는) ${quizFloorLabel(shown)}에 있어요.`,answer:truth,explanation:`${room.name}은(는) ${quizFloorLabel(room.floor)}에 있어요.`};
   });
 }
 

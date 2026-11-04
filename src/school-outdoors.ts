@@ -1,84 +1,81 @@
 import type {Point,Rect} from './school-layout.ts';
-import {courtRect,courtAccess,courtDrop,groundHeight,diningStairs,diningLanding} from './school-structure.ts';
+import {frontZ,frontDoor,backDoor,roomsOnFloor,planCorridors,links} from './changhyun-plan.ts';
+import {stairs} from './school-structure.ts';
 
-// Reference positions follow the supplied screenshots; heights remain provisional.
-export const fieldDrop=1.8;
-export const fieldRect:Rect={minX:-36,maxX:36,minZ:34,maxZ:82};
-export const fieldStairs:Rect[]=[-35,-12,2].map(x=>({minX:x-1.8,maxX:x+1.8,minZ:29.5,maxZ:34}));
-export const fieldRamps:Rect[]=[{minX:-44.5,maxX:-40.5,minZ:29.5,maxZ:34},{minX:40.5,maxX:49,minZ:29.5,maxZ:34}];
-export const rostrum:Rect={minX:-10,maxX:0,minZ:29.8,maxZ:33.6};
-// Satellite road alignment, fitted to the measured building; fence lengths are estimates.
-export const campusGround:Rect={minX:-44.5,maxX:49,minZ:-38.5,maxZ:29.5};
-export const lowerGround:Rect={minX:-44.5,maxX:49,minZ:34,maxZ:100};
-export const eastWalk:Rect={minX:40.5,maxX:49,minZ:-36.5,maxZ:100};
-export const gateApproach:Rect={minX:49,maxX:54,minZ:22.5,maxZ:27.5};
-export const campusOutline:Point[]=[{x:-44.5,z:-38.5},{x:4,z:-38.5},{x:4,z:-36.5},{x:49,z:-36.5},{x:49,z:100},{x:-44.5,z:100}];
-export const campusFences:Rect[]=campusOutline.flatMap((a,i)=>{
-  const b=campusOutline[(i+1)%campusOutline.length],t=.06;
-  const intervals=a.x===49&&b.x===49?[[a.z,gateApproach.minZ],[gateApproach.maxZ,b.z]]:[[a.z,b.z]];
-  return intervals.map(([z1,z2])=>({minX:Math.min(a.x,b.x)-t,maxX:Math.max(a.x,b.x)+t,minZ:Math.min(z1,z2)-t,maxZ:Math.max(z1,z2)+t}));
-});
-export function insideCampusBoundary(p:Point):boolean {
-  return p.x>=-44.5&&p.x<=49&&p.z>=-38.5&&p.z<=100&&(p.x<=4||p.z>=-36.5);
-}
-export const parkingWalkAreas:Rect[]=[
-  {minX:40.5,maxX:47,minZ:-35.5,maxZ:25.5},
-  {minX:29.7,maxX:47,minZ:-23.95,maxZ:1.05},
-  {minX:18,maxX:31.5,minZ:-3.95,maxZ:5.55},
-  {minX:5.5,maxX:29.7,minZ:-17.05,maxZ:-10.05},
-  {minX:39.3,maxX:49,minZ:-36.5,maxZ:-23.95},
-];
-export const campusWalkAreas:Rect[]=[
-  campusGround,...fieldStairs,...fieldRamps,lowerGround,eastWalk,gateApproach,
-];
-// Small overlaps allow crossing the door plane before the indoor scene takes over.
-export const campusDoorways:Rect[]=[
-  {minX:31.1,maxX:33,minZ:2.3,maxZ:4.3},
-  {minX:4,maxX:7,minZ:-16.05,maxZ:-14.05},
-  {minX:-5.5,maxX:-3,minZ:6.9,maxZ:8.7},
-  {minX:-35.5,maxX:-33.3,minZ:-26.85,maxZ:-25.05},
-  {minX:4,maxX:7,minZ:-13.15,maxZ:-11.15},
-];
-// Pastel visitor cars in the share-image palette: mint, butter, sky and peach.
-export const parkedCars=[
-  // Courtyard cars stand in the open north half so the upper corridor windows look down on them.
-  {x:20.9,z:-1.5,color:0xa9d3c2,turn:0},
-  {x:23.9,z:-1.5,color:0xf2dc9b,turn:0},
-  {x:26.9,z:-1.5,color:0xf6c6d0,turn:0},
-  {x:32,z:-17,color:0xa8cbe6,turn:Math.PI/2},
-  {x:32,z:-10.5,color:0xf0bca4,turn:Math.PI/2},
-];
-export const carObstacles:Rect[]=parkedCars.map(p=>({minX:p.x-(p.turn?2.1:.95),maxX:p.x+(p.turn?2.1:.95),minZ:p.z-(p.turn?.95:2.1),maxZ:p.z+(p.turn?.95:2.1)}));
-export const recyclingPoint:Point={x:42,z:-30.8};
-export const gardenRect:Rect={minX:44,maxX:49,minZ:-35.5,maxZ:-30.8};
-export const recyclingObstacles:Rect[]=[
-  ...Array.from({length:3},(_,i)=>({minX:recyclingPoint.x-1+i-.425,maxX:recyclingPoint.x-1+i+.425,minZ:recyclingPoint.z-.425,maxZ:recyclingPoint.z+.425})),
-  ...[-1.4,1.4].flatMap(x=>[-1,1].map(z=>({minX:recyclingPoint.x+x-.055,maxX:recyclingPoint.x+x+.055,minZ:recyclingPoint.z+z-.055,maxZ:recyclingPoint.z+z+.055}))),
-];
-export const gardenBeds:Rect[]=Array.from({length:3},(_,row)=>({minX:gardenRect.minX+.5,maxX:gardenRect.maxX-.5,minZ:gardenRect.minZ+.8+row*1.5-.525,maxZ:gardenRect.minZ+.8+row*1.5+.525}));
-export const containsOutdoor=(p:Point,r:Rect)=>p.x>=r.minX&&p.x<=r.maxX&&p.z>=r.minZ&&p.z<=r.maxZ;
-// Exterior grade falls gradually towards the north/west courtyard; indoor floors stay level.
-export function exteriorGrade(p:Point):number {
-  const west=Math.max(0,Math.min(1,(-4.5-p.x)/9));
-  const north=Math.max(0,Math.min(1,(20.25-p.z)/(20.25-courtRect.maxZ)));
-  return -courtDrop*west*north;
-}
+/**
+ * 건물 바깥. 항공사진(references/항공사진.png)의 위치 관계를 가볍게 옮겼고 거리는 어림값이다.
+ * 정문은 없다 — 앞 학교와 이어진 앞마당 길로 들어온다. 운동장은 건물 뒤(북쪽), 운동장 건너편에 유집체육관과 후문이 있다.
+ */
+export const campusBounds:Rect={minX:-80,maxX:64,minZ:-62,maxZ:66};
+
+// ── 서쪽 비탈: 본관 서쪽 끝 출입구 → A동 앞마당(-3.6 m) → B동 앞 계단 → B동 앞마당(-7.2 m) ──
+export const westRamp:Rect={minX:-52,maxX:-41,minZ:10.6,maxZ:14.2};
+export const rampTop=-43;
+export const aCourt:Rect={minX:-61.8,maxX:-52,minZ:-2,maxZ:23.1};
+export const bStairsRect:Rect={minX:-58,maxX:-54,minZ:-8,maxZ:-2};
+export const bCourt:Rect={minX:-70,maxX:-44.25,minZ:-14.05,maxZ:-8};
+export const aDrop=-3.6,bDrop=-7.2;
+/** 별관 건물 바닥 자리(비탈에 묻혀 있어 윗면은 바깥 땅과 같은 높이). */
+export const aFootprint:Rect={minX:-72,maxX:-61.8,minZ:-2,maxZ:23.1};
+export const bFootprint:Rect={minX:-70,maxX:-44.25,minZ:-24,maxZ:-14.05};
+/** 바깥 지형이 낮아지는 구역. 둘레는 옹벽이라 걸어서 넘을 수 없다. */
+export const pits:Rect[]=[aCourt,bCourt,westRamp,bStairsRect];
+const inRect=(p:Point,r:Rect)=>p.x>=r.minX&&p.x<=r.maxX&&p.z>=r.minZ&&p.z<=r.maxZ;
+const clamp01=(n:number)=>Math.max(0,Math.min(1,n));
 export function campusHeight(p:Point):number {
-  const stair=[...fieldStairs,...fieldRamps].find(r=>containsOutdoor(p,r));
-  if(stair)return -fieldDrop*Math.max(0,Math.min(1,(p.z-stair.minZ)/(stair.maxZ-stair.minZ)));
-  if(containsOutdoor(p,courtAccess))return groundHeight(p);
-  if(containsOutdoor(p,diningStairs))return groundHeight(p);
-  if(containsOutdoor(p,diningLanding)||containsOutdoor(p,campusDoorways[3]))return 0;
-  if(containsOutdoor(p,courtRect))return -courtDrop;
-  return containsOutdoor(p,lowerGround)?-fieldDrop:exteriorGrade(p);
+  if(inRect(p,westRamp))return aDrop*clamp01((rampTop-p.x)/(rampTop-westRamp.minX));
+  if(inRect(p,bStairsRect))return aDrop+(bDrop-aDrop)*clamp01((bStairsRect.maxZ-p.z)/(bStairsRect.maxZ-bStairsRect.minZ));
+  if(inRect(p,aCourt))return aDrop;
+  if(inRect(p,bCourt))return bDrop;
+  return 0;
 }
+export const insideCampusBoundary=(p:Point)=>p.x>=campusBounds.minX&&p.x<=campusBounds.maxX&&p.z>=campusBounds.minZ&&p.z<=campusBounds.maxZ;
+export const campusWalkAreas:Rect[]=[campusBounds];
+/** 실내로 들어가는 문은 상호작용으로 지나므로 걸어서 들어가는 문틈은 없다. */
+export const campusDoorways:Rect[]=[];
+export const containsOutdoor=(p:Point,r:Rect)=>p.x>=r.minX&&p.x<=r.maxX&&p.z>=r.minZ&&p.z<=r.maxZ;
+
+/** 앞마당 삼각 잔디와 중앙현관으로 이어지는 길. */
+export const frontLawn:Rect={minX:-26,maxX:20,minZ:frontZ+2,maxZ:frontZ+32};
+export const lawnPath:Rect={minX:frontDoor.x-1.6,maxX:frontDoor.x+1.6,minZ:frontZ,maxZ:frontZ+32};
+/** 처음 도착하는 자리. 앞 학교 쪽에서 앞마당 길을 따라 올라온다. */
+export const arrivalPoint:Point={x:frontDoor.x,z:frontZ+30};
+
+/** 운동장(건물 뒤 북쪽). 사이에 지붕 있는 스탠드 길이 있다. */
+export const fieldRect:Rect={minX:-23.5,maxX:34,minZ:-36.4,maxZ:-2.9};
+export const pitchRect:Rect={minX:-21,maxX:31.5,minZ:-34,maxZ:-5.5};
+export const standsRect:Rect={minX:-22,maxX:10,minZ:-1.6,maxZ:3.4};
+/** 운동장 건너편의 유집체육관. 들어갈 수 없다. */
+export const gymRect:Rect={minX:4,maxX:36,minZ:-54.5,maxZ:-38.5};
+export const gymName='유집체육관';
+/** 후문: 체육관과 주차장 사이. */
+export const backGate:Point={x:44,z:-45};
+export const backGateRect:Rect={minX:backGate.x-3,maxX:backGate.x+3,minZ:backGate.z-1.5,maxZ:backGate.z+1.5};
+
+// 걸을 수 없는 바깥 덩어리: 본관 1층 외곽(필로티 아래 통로는 열려 있다)과 유집체육관.
+export const campusSolids:Rect[]=[
+  ...roomsOnFloor(1).map(r=>r.rect),
+  ...planCorridors[1]!,
+  ...stairs.filter(s=>s.bottomFloor===1).map(s=>s.rect),
+  gymRect,
+];
+
 export function campusEntrancePoint(id:string):Point {
-  return {x:id==='west-entrance'?-38.25:id==='east-passage'?38.25:0,z:id==='east-passage'?16.95:21.45};
+  const link=links.find(l=>l.id===id);
+  if(link)return {...link.outside};
+  if(id==='back-entrance')return {x:backDoor.x,z:backDoor.z-1.5};
+  return {x:frontDoor.x,z:frontDoor.z+1.5};
 }
+/** 바깥에서 건물 안으로 들어갈 수 있는 문들(본관 앞·뒤, 서쪽 출입구, 별관 A동·B동). */
+export const entranceIds=['entrance','back-entrance',...links.map(l=>l.id)];
 export function canInteractFromCampus(id:string,p:Point):boolean {
-  if(['entrance','east-passage','west-entrance'].includes(id)) {
-    const entrance=campusEntrancePoint(id),halfWidth=id==='west-entrance'?1.2:id==='east-passage'?2.2:3.8;
-    return p.z>=entrance.z-.8&&p.z<=entrance.z+3.05&&Math.abs(p.x-entrance.x)<=halfWidth;
+  if(id==='entrance'||id==='back-entrance') {
+    const entrance=campusEntrancePoint(id);
+    return Math.abs(p.z-entrance.z)<=2&&Math.abs(p.x-entrance.x)<=3.2;
   }
-  return ['east-parking-door','north-parking-door','north-secondary-parking-door','court-door','dining-exit','shop'].includes(id);
+  if(links.some(l=>l.id===id)) {
+    const entrance=campusEntrancePoint(id);
+    return Math.hypot(p.x-entrance.x,p.z-entrance.z)<=2.4;
+  }
+  return false;
 }

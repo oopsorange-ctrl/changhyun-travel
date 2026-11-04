@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {gatePrincipal,canTalkToPrincipal,principalTalkRadius} from '../src/school-principal.ts';
-import {schoolResidents,gateSpawn} from '../src/school-layout.ts';
+import {schoolResidents,arrivalSpawn} from '../src/school-layout.ts';
 
-test('gate principal interaction follows the actual model and is available from the initial gate',()=>{
+test('gate principal interaction follows the actual model and is available from the arrival spot on the front path',()=>{
   const model=schoolResidents.find(p=>p.roomId==='gate-welcome')!;
   assert.deepEqual(gatePrincipal.approach,{x:model.x,z:model.z});
-  assert.equal(canTalkToPrincipal({...gateSpawn,y:0},'campus'),true);
-  assert.equal(canTalkToPrincipal({...gateSpawn,y:0},'floor1'),false);
-  assert.equal(canTalkToPrincipal({...gateSpawn,y:3.6},'campus'),false);
+  assert.equal(canTalkToPrincipal({...arrivalSpawn,y:0},'campus'),true);
+  assert.equal(canTalkToPrincipal({...arrivalSpawn,y:0},'floor1'),false);
+  assert.equal(canTalkToPrincipal({...arrivalSpawn,y:3.6},'campus'),false);
   assert.equal(canTalkToPrincipal({x:model.x+principalTalkRadius+.1,z:model.z,y:0},'campus'),false);
 });
 function guide(rows:unknown[][]){
@@ -42,7 +42,7 @@ test('principal dialog pages split only on lines holding ---',async()=>{
 test('the office principal and the vice principal can be greeted from a reachable spot in their rooms',async()=>{
   const {indoorGreeters,nearbyGreeter,greetRadius}=await import('../src/school-principal.ts');
   const {isWalkable,findSchoolPath}=await import('../src/school-navigation.ts');
-  assert.deepEqual(indoorGreeters.map(g=>[g.name,g.floor]),[['교장선생님',1],['교감선생님',2]]);
+  assert.deepEqual(indoorGreeters.map(g=>[g.name,g.floor]),[['교장선생님',1],['교감선생님',1]]);
   for(const greeter of indoorGreeters) {
     const open=new Set([greeter.room.id]);
     // Some spot around the teacher, inside the greeting radius, is free floor the visitor can walk to.
@@ -50,6 +50,6 @@ test('the office principal and the vice principal can be greeted from a reachabl
     const spot=spots.find(p=>isWalkable(p,'floor1',open,greeter.floor)&&findSchoolPath(greeter.room.approach,p,'floor1',open,greeter.floor).length);
     assert.ok(spot,`${greeter.name} can be approached`);
     assert.equal(nearbyGreeter(spot,greeter.floor)?.id,greeter.id);
-    assert.equal(nearbyGreeter(spot,greeter.floor===1?2:1),undefined,'Only on their own floor');
+    assert.equal(nearbyGreeter(spot,2),undefined,'Only on their own floor');
   }
 });

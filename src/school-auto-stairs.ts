@@ -4,10 +4,11 @@ import {onFloorLevel,walkingFloor} from './school-upper-floors.ts';
 import type {Point} from './school-layout.ts';
 
 export type SchoolStair=typeof stairs[number];
+/** 계단으로 들어서기 직전의 복도 자리. 모든 층이 같다. */
 export function stairApproach(stair:SchoolStair,floor:number):Point {
-  if(floor===1)return stairEntry(stair);
-  const start=stairPoint(stair,.6,stair.id==='stairs-east'?.9:3.1);
-  return stair.id==='stairs-east'?{x:start.x,z:5.9}:stair.id==='stairs-central'?{x:start.x,z:6.6}:stair.id==='stairs-west'?{x:start.x,z:11.4}:{x:2.9,z:start.z};
+  // B동 계단은 급식실(-2층) 홀 안으로 내려온다. 층계참이 홀 안쪽이라 홀 쪽에서 계단으로 든다.
+  if(stair.id==='stairs-b'&&floor===-2)return stairPoint(stair,.9,2);
+  return stairEntry(stair);
 }
 
 export function nearbyStair(position:VisitorPosition):SchoolStair|undefined {
@@ -15,19 +16,21 @@ export function nearbyStair(position:VisitorPosition):SchoolStair|undefined {
   const support=stairSupport(position,position.y);
   if(support)return stairs.find(s=>s.id===support.stairId);
   const floor=walkingFloor(position.y);
-  return stairs.find(s=>{const p=stairApproach(s,floor);return Math.hypot(p.x-position.x,p.z-position.z)<1.9;});
+  return stairs.find(s=>{
+    if(floor<s.bottomFloor||floor>s.topFloor)return false;
+    const p=stairApproach(s,floor);return Math.hypot(p.x-position.x,p.z-position.z)<1.9;
+  });
 }
 
 // Route along both flights and the intermediate landing, never through the stairwell void.
 export function automaticStairPath(start:VisitorPosition,stair:SchoolStair,toFloor:number,doors:ReadonlySet<string>):Point[] {
   const fromFloor=walkingFloor(start.y);
-  if(!onFloorLevel(start.y)||Math.abs(toFloor-fromFloor)!==1||toFloor<1||toFloor>5)return [];
+  if(!onFloorLevel(start.y)||Math.abs(toFloor-fromFloor)!==1||toFloor<stair.bottomFloor||toFloor>stair.topFloor||fromFloor<stair.bottomFloor||fromFloor>stair.topFloor)return [];
   const approach=stairApproach(stair,fromFloor),support=stairSupport(start,start.y);
   const approachPath=support?.stairId===stair.id?[{x:start.x,z:start.z}]:findSchoolPath(start,approach,'floor1',doors,fromFloor);
   if(!approachPath.length)return [];
   const a=stairPoint(stair,.6,3.1),b=stairPoint(stair,5.2,3.1),c=stairPoint(stair,5.2,.9),d=stairPoint(stair,.6,.9);
-  // Enter / leave east stairs through the lower-z side of the same full-height landing.
-  const entrance=stairPoint(stair,.6,stair.id==='stairs-east'?.9:3.1);
+  const entrance=stairPoint(stair,.6,3.1);
   return [...approachPath,entrance,...(toFloor>fromFloor?[a,b,c,d]:[d,c,b,a]),entrance,stairApproach(stair,toFloor)];
 }
 
@@ -44,4 +47,3 @@ export function advanceStairRoute(start:VisitorPosition,path:readonly Point[],tr
   }
   return {position,consumed,blocked:false};
 }
-
