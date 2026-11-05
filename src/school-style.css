@@ -160,10 +160,19 @@ dialog.map-dialog[open]{display:flex;flex-direction:column}
 .hero-card:hover{transform:translateY(-1px)}
 .hero-card[aria-pressed=true]{border-color:#5f7f64;background:#e1ecd6}
 @media (max-width:520px){.hero-pick{grid-template-columns:1fr}}
-/* 폰 가로 화면: 메뉴(방명록·친구 바꾸기 등)를 열면 아래 큰 상호작용 버튼이 겹치므로 메뉴가 열려 있는 동안 숨기고, 낮은 화면에서는 메뉴 목록이 스크롤되게 한다. */
+/* 폰 가로 화면: 낮은 화면에서는 메뉴 목록(방명록·친구 바꾸기 등)이 화면 안에서 스크롤되게 한다. */
 @media (orientation:landscape) and (max-height:560px){
-  #hud.menu-open .nearby-action{display:none}
   #hud.menu-open .scene-tools{max-height:calc(100dvh - 66px);overflow-y:auto;overscroll-behavior:contain;pointer-events:auto}
 }
 
 .sheet-neis{margin-top:14px}.sheet-neis-list section{padding:10px 0;border-top:1px solid #dce1d2}.sheet-neis-list h4{margin:0 0 4px;font-size:13px;color:#597863}.sheet-neis-list p{margin:4px 0;font-size:13px;line-height:1.6}
+/* 폰: 상호작용 버튼을 이동 버튼(조이스틱) 바로 위, 같은 왼쪽 줄에 둔다. 오른쪽 메뉴·미니맵·안내 말풍선과 겹치지 않는다. */
+@media(max-width:760px){
+  .nearby-action{left:max(20px,env(safe-area-inset-left));right:auto;transform:none;bottom:calc(max(36px,calc(env(safe-area-inset-bottom) + 24px)) + 108px);max-width:min(240px,calc(100vw - 150px))}
+  .nearby-action:active{transform:scale(.98)}
+  @keyframes action-pop{0%{transform:scale(.82);opacity:.4}100%{transform:scale(1);opacity:1}}
+  @keyframes action-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .nearby-action{left:max(18px,env(safe-area-inset-left));right:auto;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 104px);max-width:176px}
+}

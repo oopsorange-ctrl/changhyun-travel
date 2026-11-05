@@ -6,6 +6,8 @@ export type PlayerPose={seat?:number;activity?:PlayerActivity;lift?:number};
 export const squatRate=2.4,curlRate=3;
 // Treadmill jog speed of the walk clip; faster reads as shaking at the 30 fps many phones render.
 const runPace=2.1,jogLean=Math.PI*.06;
+/** 걷기 동작 재생 속도: 기본 1.8에 이동 속도 +30%(school-main.ts의 paceBoost)를 곱해 발걸음을 맞춘다. */
+const walkPace=1.8*1.3;
 
 /**
  * The generated rigs rest the hands against the hips: hip and hem vertices carry a little hand weight and a few
@@ -47,7 +49,7 @@ export function createPlayerMotion(model:THREE.Object3D,clips:THREE.AnimationCli
   for(let i=0;i<walkHips.values.length;i+=3){walkHips.values[i]=idleHips.values[0]!;walkHips.values[i+2]=idleHips.values[2]!;}
   const mixer=new THREE.AnimationMixer(model);
   const idle=mixer.clipAction(idleClip).play();
-  const walk=mixer.clipAction(walkClip).setEffectiveWeight(0).setEffectiveTimeScale(1.8).play();
+  const walk=mixer.clipAction(walkClip).setEffectiveWeight(0).setEffectiveTimeScale(walkPace).play();
   const soles:{mesh:THREE.SkinnedMesh;indices:number[]}[]=[];
   model.traverse(object=>{
     if(!(object instanceof THREE.SkinnedMesh))return;
@@ -95,7 +97,7 @@ export function createPlayerMotion(model:THREE.Object3D,clips:THREE.AnimationCli
     // Poses blend in and out over 0.4 s on a smoothstep, starting and ending at rest instead of jumping.
     ramp=THREE.MathUtils.clamp(ramp+(pose.activity&&!running?dt:-dt)/.4,0,1);act=ramp*ramp*(3-2*ramp);
     jog=THREE.MathUtils.clamp(jog+(running?dt:-dt)/.4,0,1);
-    idle.setEffectiveWeight(1-weight);walk.setEffectiveWeight(weight);walk.setEffectiveTimeScale(running?runPace:1.8);
+    idle.setEffectiveWeight(1-weight);walk.setEffectiveWeight(weight);walk.setEffectiveTimeScale(running?runPace:walkPace);
     for(const [bone,rest] of unbent)bone.quaternion.copy(rest);
     unbent.clear();
     mixer.update(dt);

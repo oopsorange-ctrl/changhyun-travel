@@ -84,6 +84,8 @@ $('#menu-toggle').onclick=()=>{
 for(const id of ['#map-button','#help-button','#overview','#course-button','#guestbook-button','#swap-hero'])$(id).addEventListener('click',()=>{if(compactLandscape.matches){$('#hud').classList.remove('menu-open');$('#menu-toggle').setAttribute('aria-expanded','false');}});
 let school:Awaited<ReturnType<typeof createSchool>>;
 let mode:TourMode='campus',started=false,overview=true;
+/** 걷는 속도 배율(기존 대비 +30%). 조이스틱·자동 길 안내·계단 이동의 이동 속도에 곱하고, 걷기 동작 재생 속도(player.ts의 walkPace)도 같은 비율로 올려 발걸음이 맞게 한다. */
+const paceBoost=1.3;
 let walkingPath:Point[]=[],routeGoal:Place|null=null,nearby:Place|null=null;
 /** What Space and the bottom action button do right now. */
 type Hoop=School['hoops'][number];
@@ -674,7 +676,7 @@ async function init(){
       const ix=joystick.x+(held.has('d')||held.has('ArrowRight')?1:0)-(held.has('a')||held.has('ArrowLeft')?1:0);
       const iy=joystick.y+(held.has('s')||held.has('ArrowDown')?1:0)-(held.has('w')||held.has('ArrowUp')?1:0);
       if(stairTrip){
-        const trip=stairTrip,step=advanceStairRoute({...point(),y:school.player.position.y},trip.path,dt*3.2,openDoors);
+        const trip=stairTrip,step=advanceStairRoute({...point(),y:school.player.position.y},trip.path,dt*3.2*paceBoost,openDoors);
         school.player.position.set(step.position.x,step.position.y,step.position.z);trip.path.splice(0,step.consumed);
         if(step.blocked){stairTrip=null;toast('계단 이동이 멈췄어요. 주변을 확인해 주세요.');}
         else if(!trip.path.length){stairTrip=null;toast(`${floorLabel(trip.floor)}에 도착했어요.`);if(trip.resumeTour)navigateTourStop();}
@@ -684,9 +686,9 @@ async function init(){
         if(Math.hypot(ix,iy)>.08)standUp();
       }else if(Math.hypot(ix,iy)>.08){
         const direction=schoolInputDirection(ix,iy);
-        const next=moveSchoolVisitor({...before,y:school.player.position.y},{x:direction.x*dt*5.2,z:direction.z*dt*5.2},mode,openDoors);school.player.position.set(next.x,next.y,next.z);
+        const next=moveSchoolVisitor({...before,y:school.player.position.y},{x:direction.x*dt*5.2*paceBoost,z:direction.z*dt*5.2*paceBoost},mode,openDoors);school.player.position.set(next.x,next.y,next.z);
       }else if(walkingPath.length){
-        const floor=currentFloor(),step=advanceSchoolRoute(point(),walkingPath,dt*6,mode,openDoors,floor);
+        const floor=currentFloor(),step=advanceSchoolRoute(point(),walkingPath,dt*6*paceBoost,mode,openDoors,floor);
         school.player.position.set(step.position.x,mode==='floor1'?(floor-1)*floorRise:campusHeight(step.position),step.position.z);walkingPath.splice(0,step.consumed);
         if(step.blocked){stopRoute();toast('문이나 가구 앞에서 멈췄어요. 주변을 확인해 주세요.');}
         if(!walkingPath.length){school.setRoute([]);if(routeGoal){toast(`${routeGoal.name} 입구에 도착했어요.`);$('#guide-text').textContent=routeGoal.id.startsWith('stairs-')?`${routeGoal.name}에 도착했어요. 올라가기 또는 내려가기 버튼으로 층을 선택해 주세요.`:`${routeGoal.name}에 도착했어요. 가까운 안내 표시나 Space를 눌러 보세요.`;routeGoal=null;$('#route-card').hidden=true;}}
