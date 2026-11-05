@@ -52,7 +52,7 @@ $('#app').innerHTML=`
   <main id="school-stage" tabindex="-1" aria-label="${schoolConfig.siteName} · ${schoolConfig.schoolName} 3D 탐방 화면"></main>
   <div id="loading" role="status"><span class="loading-leaf">${icon('leaf')}</span><b>학교의 문을 열고 있어요</b><span>캐릭터와 공간을 불러오는 중입니다.</span></div>
   <section id="welcome" hidden aria-labelledby="welcome-title">
-    <div class="welcome-card"><div class="eyebrow">${schoolConfig.englishName} · SCHOOL WALK</div><h1 id="welcome-title">처음 오는 길도,<br>천천히 둘러봐요.</h1><p>앞마당 길에서 학교로 걸어 들어가며<br>찾아갈 곳을 미리 만나 보세요.</p><div class="welcome-tags"><span>앞마당부터 학교 산책</span><span>1–6층 안내도</span></div>${heroPickHtml}<button id="start-campus" class="primary">앞마당에서 탐방 시작 ${icon('arrow')}</button><button id="start-course" class="secondary">3분 추천 코스 둘러보기</button><button id="start-tour" class="quiet">1층 바로 둘러보기</button><small>${schoolConfig.schoolName} · 3D 학교 산책<br>건물 외형과 문 위치는 실제 모습과 조금 다를 수 있어요.<br>${outbound({label:templateCredit.text,url:templateCredit.url},'')}</small></div>
+    <div class="welcome-card"><div class="eyebrow">${schoolConfig.englishName} · SCHOOL WALK</div><h1 id="welcome-title">처음 오는 길도,<br>천천히 둘러봐요.</h1><p>앞마당 길에서 학교로 걸어 들어가며<br>찾아갈 곳을 미리 만나 보세요.</p><div class="welcome-tags"><span>앞마당부터 학교 산책</span><span>1–6층 안내도</span></div><p class="welcome-how"><b>걷는 법</b> 왼쪽 아래 이동판(키보드는 WASD)으로 걷고, 바닥을 눌러도 그곳으로 가요.</p>${heroPickHtml}<button id="start-campus" class="primary">앞마당에서 탐방 시작 ${icon('arrow')}</button><button id="start-course" class="secondary">3분 추천 코스 둘러보기</button><button id="start-tour" class="quiet">1층 바로 둘러보기</button><small>${schoolConfig.schoolName} · 3D 학교 산책<br>건물 외형과 문 위치는 실제 모습과 조금 다를 수 있어요.<br>${outbound({label:templateCredit.text,url:templateCredit.url},'')}</small></div>
   </section>
   <div id="hud" hidden>
     <header class="topbar"><div class="school-brand"><span class="brand-mark">${icon('leaf')}</span><div><strong>${schoolConfig.siteName}</strong><span>${schoolConfig.tagline}</span></div></div><nav aria-label="화면 보기"><button id="mode-floor" class="tab active">1층 산책</button><button id="mode-campus" class="tab">건물 전체</button></nav><div class="header-tools"><button id="menu-toggle" class="round-button menu-toggle" aria-expanded="false" aria-controls="hud" aria-label="메뉴 펼치기">☰<span>메뉴</span></button><button id="map-button" class="round-button" aria-label="교실 바로가기 · 층별 안내도 열기">${icon('map')}<span>교실 바로가기</span></button><button id="help-button" class="icon-button" aria-label="조작 방법과 자료 출처">${icon('help')}</button></div></header>
@@ -62,7 +62,7 @@ $('#app').innerHTML=`
     <div id="stair-actions" hidden aria-label="계단 이동"></div>
     <div class="scene-tools"><button id="overview" class="round-button">${icon('view')}<span>전체 보기</span></button><button id="music-toggle" class="round-button" aria-label="배경음악 끄기" aria-pressed="true">♫ 음악 ON</button><button id="course-button" class="round-button" aria-label="3분 추천 코스 열기">${icon('map')}<span>3분 투어</span></button><button id="swap-hero" class="round-button" aria-label="조종할 친구 바꾸기">${icon('leaf')}<span>친구 바꾸기</span></button><button id="guestbook-button" class="round-button" aria-label="방명록 열기">${icon('leaf')}<span>방명록</span></button><span id="location-chip">1층 · 중앙로비</span></div>
     <button id="joystick" aria-label="화면 이동판. 누른 채 원하는 방향으로 움직이세요."><span class="stick-cross"></span><span id="stick-thumb"></span><small>이동</small></button>
-    <footer class="guide"><img src="${import.meta.env.BASE_URL}jjeong-portrait.png" alt="안내자 쩡이"><div><b>쩡이의 학교 안내</b><p id="guide-text">반가워냥! 가고 싶은 곳을 고르거나 복도를 눌러서 걸어 보라냥~</p></div><button id="place-info" class="icon-button" aria-label="가까운 장소 자세히 보기">${icon('help')}</button></footer>
+    <footer class="guide"><img src="${import.meta.env.BASE_URL}jjeong-portrait.png" alt="안내자 쩡이"><div><b>쩡이의 학교 안내</b><p id="guide-text">반가워냥! 왼쪽 아래 이동판(키보드는 WASD)으로 걷거나 바닥을 눌러 보라냥~ 가고 싶은 곳을 골라도 된다냥.</p></div><button id="place-info" class="icon-button" aria-label="가까운 장소 자세히 보기">${icon('help')}</button></footer>
     <div class="keyboard-hint"><kbd>WASD</kbd> 이동 <span>·</span> <kbd>Space</kbd> 문·의자·물건 <span>·</span> 바닥 클릭</div>
     <button id="mini-map" aria-label="현재 위치와 층별 안내도 보기"><span>현재 위치</span><svg viewBox="0 0 420 115" aria-hidden="true"><g id="mini-rooms"></g><g id="mini-player"><circle r="28" fill="#c54738" fill-opacity=".2"/><circle r="18" fill="#c54738" stroke="#fffdf1" stroke-width="2" vector-effect="non-scaling-stroke"/></g></svg></button>
   </div>
@@ -175,7 +175,7 @@ function start(value:TourMode){
   started=true;$('#welcome').hidden=true;$('#hud').hidden=false;setMode(value);
   if(value==='campus'){
     school.player.position.set(arrivalSpawn.x,0,arrivalSpawn.z);school.player.rotation.y=Math.PI;setOverview(false);
-    $('#guide-text').textContent='앞마당 길에 도착했다냥. 학교 앞쪽은 앞 학교랑 이어져 있어서 정문이 따로 없다냥. 길을 따라 중앙현관까지 걸어가 보라냥!';
+    $('#guide-text').textContent='앞마당 길에 도착했다냥. 학교 앞쪽은 앞 학교랑 이어져 있어서 정문이 따로 없다냥. 길을 따라 중앙현관까지 걸어가 보라냥! 왼쪽 아래 이동판이나 WASD, 바닥 누르기로 움직일 수 있다냥.';
     $('#location-chip').textContent='학교 바깥 · 앞마당 길';
   }
   collapseDestinations(innerWidth<=700);$('#school-stage').focus();
@@ -665,7 +665,7 @@ async function init(){
       if(path.length){stopRoute();walkingPath=path;school.setRoute(path);setOverview(false);$('#guide-text').textContent=`${prop.name} 앞으로 걸어간다냥. 도착하면 한 번 더 누르거나 Space를 눌러 보라냥.`;return;}
     }
     if(hit.placeId){const place=allPlaces.find(p=>p.id===hit.placeId);if(place){if(distance(point(),interactionPoint(place))<=interactionRadius(place))interact(place);else if(mode==='floor1')chooseDestination(place);else toast('실내 산책에서 이 장소를 찾아갈 수 있어요.');return;}}
-    if(!hit.point||!isWalkable(hit.point,mode,openDoors,currentFloor())){toast('빈 바닥이나 복도를 눌러 이동해 주세요.');return;}
+    if(!hit.point||!isWalkable(hit.point,mode,openDoors,currentFloor())){toast('바닥이나 복도를 누르거나, 왼쪽 아래 이동판(WASD)으로 걸어 보세요.');return;}
     const path=findSchoolPath(point(),hit.point,mode,openDoors,currentFloor());if(!path.length)return;stopRoute();walkingPath=path;school.setRoute(path);setOverview(false);
   });
   let last=performance.now(),elapsed=0,uiClock=0;

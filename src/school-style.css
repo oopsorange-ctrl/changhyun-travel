@@ -176,3 +176,9 @@ dialog.map-dialog[open]{display:flex;flex-direction:column}
 @media (orientation:landscape) and (max-height:560px){
   .nearby-action{left:max(18px,env(safe-area-inset-left));right:auto;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 104px);max-width:176px}
 }
+/* 짧은 알림은 안내 카드·버튼·장면 글자를 가리지 않도록 위쪽에 둔다. */
+#toast{top:92px;bottom:auto}
+@media(max-width:760px) and (orientation:portrait){#toast{top:max(12px,env(safe-area-inset-top));left:184px;right:60px;transform:none;width:auto;max-width:none;font-size:11px;padding:8px 10px;line-height:1.4}}
+@media(orientation:landscape) and (max-height:560px){#toast{top:54px}}
+.welcome-how{margin:0 0 10px;padding:9px 12px;border-radius:12px;background:#f1f4e4;color:#4d6650;font-size:12px;line-height:1.5}.welcome-how b{margin-right:4px}
+@media(orientation:landscape) and (max-height:560px){.welcome-how{display:none}}
