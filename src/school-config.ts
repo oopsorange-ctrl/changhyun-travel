@@ -25,13 +25,13 @@ export const schoolConfig={
    */
   dataUrl:'https://script.google.com/macros/s/AKfycbykHUtUt1CC7u_kBRKk4qFg2nE1RON4dVMM5x4kIWRAMnNjyeQn7_yQ8g0OIxIlUx9Z/exec',
   /** 로비 현수막과 기념사진 아래쪽 글 */
-  eventTitle:'창현고등학교 입학설명회',
-  eventWelcome:'예비 창현인 여러분, 마음껏 둘러보세요',
+  eventTitle:'창현고등학교 여행',
+  eventWelcome:'창현에 오신 것을 환영해요, 마음껏 둘러보세요',
   /** 도움말의 '자료와 표현 범위' 상자 */
   about:{
-    note:'이 3D 학교는 제작 중인 견본입니다. 층별 배치·문·가구는 앞으로 창현고등학교에 맞게 바꿔 갈 예정이며, 지금 보이는 모습은 실제와 다를 수 있습니다.',
+    note:'이 3D 학교는 창현고등학교의 층별 배치도를 바탕으로 만들었어요. 건물 외관, 문 위치, 가구는 실제와 조금 다를 수 있어요.',
     details:[
-      '교문에서 출발해 복도와 교실을 걸을 수 있어요. WASD·방향키 또는 이동판으로 움직이세요. 교실 문을 열고 들어갈 수 있으며 가구는 기본 견본이에요.',
+      '정문이 따로 없어서 앞마당 길로 들어와 중앙현관을 지나 복도와 교실을 걸을 수 있어요. WASD·방향키 또는 이동판으로 움직이세요. 교실 문을 열고 들어갈 수 있고, 가구는 공간의 쓰임을 보여 주는 모형이에요.',
     ],
     /** 층별 안내도 아래 '실 이름 참고' 링크 */
     roomNames:{label:'학교 지도·거리뷰',url:'https://map.naver.com/p/search/%EC%B0%BD%ED%98%84%EA%B3%A0%EB%93%B1%ED%95%99%EA%B5%90'},

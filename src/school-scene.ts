@@ -270,10 +270,10 @@ export async function createSchool(host:HTMLElement) {
   box(campusContext,concrete,gymCenter.x,.35,gymRect.maxZ+.04,gymWidth+.1,.7,.1);
   box(campusContext,gymGlass,gymCenter.x,8.4,gymRect.maxZ+.05,gymWidth-5,1.2,.08);
   for(let x=gymRect.minX+3.5;x<gymRect.maxX-3;x+=3)box(campusContext,concrete,x,8.4,gymRect.maxZ+.07,.12,1.3,.08);
-  box(campusContext,gymGlass,gymCenter.x,1.6,gymRect.maxZ+.05,6,3.2,.08);
-  box(campusContext,concrete,gymCenter.x,3.5,gymRect.maxZ+1.2,8.4,.25,2.4);
-  for(const side of [-1,1])cylinder(campusContext,concrete,gymCenter.x+side*3.8,1.75,gymRect.maxZ+2.1,.12,3.5);
-  // 이름판은 화면 오른쪽에 보이는 동쪽 면에 단다.
+  // 출입문·차양·이름판은 화면 오른쪽에 보이는 동쪽 면(후문 쪽)에 있다.
+  box(campusContext,gymGlass,gymRect.maxX+.05,1.6,gymCenter.z,.08,3.2,6);
+  box(campusContext,concrete,gymRect.maxX+1.2,3.5,gymCenter.z,2.4,.25,8.4);
+  for(const side of [-1,1])cylinder(campusContext,concrete,gymRect.maxX+2.1,1.75,gymCenter.z+side*3.8,.12,3.5);
   sign(campusContext,gymName,gymRect.maxX+.15,6.0,gymCenter.z,6,new THREE.Euler(0,Math.PI/2,0));
   // 후문
   for(const side of [-1,1]){cylinder(campusContext,hall.metal,backGate.x+side*2.4,1.6,backGate.z,.14,3.2);for(let i=0;i<4;i++)rail(campusContext,new THREE.Vector3(backGate.x+side*(2.6+i*1.5),.9,backGate.z),new THREE.Vector3(backGate.x+side*(2.6+(i+1)*1.5),.9,backGate.z));}

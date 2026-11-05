@@ -52,7 +52,7 @@ $('#app').innerHTML=`
   <main id="school-stage" tabindex="-1" aria-label="${schoolConfig.siteName} · ${schoolConfig.schoolName} 3D 탐방 화면"></main>
   <div id="loading" role="status"><span class="loading-leaf">${icon('leaf')}</span><b>학교의 문을 열고 있어요</b><span>캐릭터와 공간을 불러오는 중입니다.</span></div>
   <section id="welcome" hidden aria-labelledby="welcome-title">
-    <div class="welcome-card"><div class="eyebrow">${schoolConfig.englishName} · SCHOOL WALK</div><h1 id="welcome-title">처음 오는 길도,<br>천천히 둘러봐요.</h1><p>앞마당 길에서 학교로 걸어 들어가며<br>찾아갈 곳을 미리 만나 보세요.</p><div class="welcome-tags"><span>앞마당부터 학교 산책</span><span>1–6층 안내도</span></div>${heroPickHtml}<button id="start-campus" class="primary">앞마당에서 탐방 시작 ${icon('arrow')}</button><button id="start-course" class="secondary">3분 추천 코스 둘러보기</button><button id="start-tour" class="quiet">1층 바로 둘러보기</button><small>${schoolConfig.schoolName} · 배치도 기반 3D 견본<br>건물 외형과 문 위치는 실제 모습과 다를 수 있어요.<br>${outbound({label:templateCredit.text,url:templateCredit.url},'')}</small></div>
+    <div class="welcome-card"><div class="eyebrow">${schoolConfig.englishName} · SCHOOL WALK</div><h1 id="welcome-title">처음 오는 길도,<br>천천히 둘러봐요.</h1><p>앞마당 길에서 학교로 걸어 들어가며<br>찾아갈 곳을 미리 만나 보세요.</p><div class="welcome-tags"><span>앞마당부터 학교 산책</span><span>1–6층 안내도</span></div>${heroPickHtml}<button id="start-campus" class="primary">앞마당에서 탐방 시작 ${icon('arrow')}</button><button id="start-course" class="secondary">3분 추천 코스 둘러보기</button><button id="start-tour" class="quiet">1층 바로 둘러보기</button><small>${schoolConfig.schoolName} · 3D 학교 산책<br>건물 외형과 문 위치는 실제 모습과 조금 다를 수 있어요.<br>${outbound({label:templateCredit.text,url:templateCredit.url},'')}</small></div>
   </section>
   <div id="hud" hidden>
     <header class="topbar"><div class="school-brand"><span class="brand-mark">${icon('leaf')}</span><div><strong>${schoolConfig.siteName}</strong><span>${schoolConfig.tagline}</span></div></div><nav aria-label="화면 보기"><button id="mode-floor" class="tab active">1층 산책</button><button id="mode-campus" class="tab">건물 전체</button></nav><div class="header-tools"><button id="menu-toggle" class="round-button menu-toggle" aria-expanded="false" aria-controls="hud" aria-label="메뉴 펼치기">☰<span>메뉴</span></button><button id="map-button" class="round-button" aria-label="교실 바로가기 · 층별 안내도 열기">${icon('map')}<span>교실 바로가기</span></button><button id="help-button" class="icon-button" aria-label="조작 방법과 자료 출처">${icon('help')}</button></div></header>
@@ -62,7 +62,7 @@ $('#app').innerHTML=`
     <div id="stair-actions" hidden aria-label="계단 이동"></div>
     <div class="scene-tools"><button id="overview" class="round-button">${icon('view')}<span>전체 보기</span></button><button id="music-toggle" class="round-button" aria-label="배경음악 끄기" aria-pressed="true">♫ 음악 ON</button><button id="course-button" class="round-button" aria-label="3분 추천 코스 열기">${icon('map')}<span>3분 투어</span></button><button id="swap-hero" class="round-button" aria-label="조종할 친구 바꾸기">${icon('leaf')}<span>친구 바꾸기</span></button><button id="guestbook-button" class="round-button" aria-label="방명록 열기">${icon('leaf')}<span>방명록</span></button><span id="location-chip">1층 · 중앙로비</span></div>
     <button id="joystick" aria-label="화면 이동판. 누른 채 원하는 방향으로 움직이세요."><span class="stick-cross"></span><span id="stick-thumb"></span><small>이동</small></button>
-    <footer class="guide"><img src="${import.meta.env.BASE_URL}jjeong-portrait.png" alt="안내자 쩡이"><div><b>쩡이의 학교 안내</b><p id="guide-text">반가워요! 목적지를 고르거나 복도를 눌러 걸어 보세요.</p></div><button id="place-info" class="icon-button" aria-label="가까운 장소 자세히 보기">${icon('help')}</button></footer>
+    <footer class="guide"><img src="${import.meta.env.BASE_URL}jjeong-portrait.png" alt="안내자 쩡이"><div><b>쩡이의 학교 안내</b><p id="guide-text">반가워냥! 가고 싶은 곳을 고르거나 복도를 눌러서 걸어 보라냥~</p></div><button id="place-info" class="icon-button" aria-label="가까운 장소 자세히 보기">${icon('help')}</button></footer>
     <div class="keyboard-hint"><kbd>WASD</kbd> 이동 <span>·</span> <kbd>Space</kbd> 문·의자·물건 <span>·</span> 바닥 클릭</div>
     <button id="mini-map" aria-label="현재 위치와 층별 안내도 보기"><span>현재 위치</span><svg viewBox="0 0 420 115" aria-hidden="true"><g id="mini-rooms"></g><g id="mini-player"><circle r="28" fill="#c54738" fill-opacity=".2"/><circle r="18" fill="#c54738" stroke="#fffdf1" stroke-width="2" vector-effect="non-scaling-stroke"/></g></svg></button>
   </div>
@@ -150,7 +150,7 @@ function beginStair(stair:SchoolStair,floor:number,resumeTour=false){
   const path=automaticStairPath(school.player.position,stair,floor,openDoors);
   if(!path.length){toast('계단 앞 복도로 조금 더 가까이 와 주세요.');return;}
   if(dialog.open)dialog.close();clearInput();stopRoute();setOverview(false);
-  stairTrip={path,floor,resumeTour};$('#guide-text').textContent=`${stair.name}을 따라 ${floorLabel(floor)}으로 이동하고 있어요.`;
+  stairTrip={path,floor,resumeTour};$('#guide-text').textContent=`${stair.name}을 따라 ${floorLabel(floor)}으로 이동하고 있다냥.`;
 }
 function setOverview(value:boolean){overview=value;school.setOverview(value);$('#overview span').textContent=value?'따라 보기':'전체 보기';}
 function setMode(value:TourMode,keepInput=false){
@@ -161,7 +161,7 @@ function setMode(value:TourMode,keepInput=false){
   setOverview(value==='campus');
   $('#mode-floor').classList.toggle('active',value==='floor1');$('#mode-campus').classList.toggle('active',value==='campus');
   $('#mini-map').hidden=value==='campus';
-  $('#guide-text').textContent=value==='floor1'?'중앙현관에 도착했어요. 복도를 사이에 두고 남쪽 교실은 정원이, 북쪽 교실은 운동장이 보여요. 맞은편 후면 로비로 나가면 운동장이에요.':'앞마당에서 중앙현관으로 걸어가 보세요. 건물 뒤쪽으로 돌아가면 운동장이 있어요.';
+  $('#guide-text').textContent=value==='floor1'?'중앙현관에 도착했다냥. 복도를 사이에 두고 남쪽 교실은 정원이, 북쪽 교실은 운동장이 보인다냥. 맞은편 후면 로비로 나가면 운동장이다냥!':'앞마당에서 중앙현관까지 걸어가 보라냥. 건물 뒤쪽으로 돌아가면 운동장이 있다냥.';
   $('#location-chip').textContent=value==='floor1'?'1층 · 중앙현관':'건물 전체 보기';
   standUp();stopExercise();nearby=null;action=null;$('#nearby-action').hidden=true;
 }
@@ -175,7 +175,7 @@ function start(value:TourMode){
   started=true;$('#welcome').hidden=true;$('#hud').hidden=false;setMode(value);
   if(value==='campus'){
     school.player.position.set(arrivalSpawn.x,0,arrivalSpawn.z);school.player.rotation.y=Math.PI;setOverview(false);
-    $('#guide-text').textContent='앞마당 길에 도착했어요. 학교 앞쪽은 앞 학교와 이어져 있어서 정문이 따로 없어요. 길을 따라 중앙현관까지 걸어가 보세요.';
+    $('#guide-text').textContent='앞마당 길에 도착했다냥. 학교 앞쪽은 앞 학교랑 이어져 있어서 정문이 따로 없다냥. 길을 따라 중앙현관까지 걸어가 보라냥!';
     $('#location-chip').textContent='학교 바깥 · 앞마당 길';
   }
   collapseDestinations(innerWidth<=700);$('#school-stage').focus();
@@ -223,7 +223,7 @@ function navigateTourStop(){
     walkingPath=path;routeGoal=places.find(place=>place.id===stop.placeId)!;school.setRoute(path);setOverview(false);
     $('#route-card').hidden=false;$('#route-status').textContent='중앙현관으로 이동 중';
   }
-  $('#guide-text').textContent=`${tour.course.name} · ${tour.index+1}/${tour.course.stops.length}. ${allPlaces.find(place=>place.id===stop.placeId)!.name}으로 함께 걸어요. 도착하면 설명이 열려요.`;
+  $('#guide-text').textContent=`${tour.course.name} · ${tour.index+1}/${tour.course.stops.length}. ${allPlaces.find(place=>place.id===stop.placeId)!.name}으로 같이 걸어가자냥. 도착하면 설명이 열린다냥.`;
 }
 function showTourStop(){
   if(!tour)return;
@@ -261,7 +261,7 @@ function chooseDestination(place:Place){
   afterPortal=null;
   if(!path.length){if(distance(point(),goalPoint)<1.5){toast(`${place.name} 입구에 도착했어요.`);return;}toast('현재 위치에서는 이어지는 통로를 찾지 못했어요. 중앙현관에서 다시 선택해 주세요.');return;}
   setOverview(false);walkingPath=path;routeGoal=target;school.setRoute(path);$('#route-card').hidden=false;
-  $('#route-status').textContent=`${target.name} 입구로 이동 중`;$('#guide-text').textContent=afterPortal?`${place.name}으로 가려면 ${target.name}을 열어야 해요. 문 앞에서 Space나 안내 버튼을 눌러 주세요.`:`바닥의 안내선을 따라 ${place.name} 입구로 가요. 이동키를 누르면 직접 걸을 수 있어요.`;
+  $('#route-status').textContent=`${target.name} 입구로 이동 중`;$('#guide-text').textContent=afterPortal?`${place.name}으로 가려면 ${target.name}을 열어야 한다냥. 문 앞에서 Space나 안내 버튼을 눌러 달라냥.`:`바닥의 안내선을 따라 ${place.name} 입구로 가자냥. 이동키를 누르면 직접 걸을 수 있다냥.`;
   $('#school-stage').focus();
 }
 function interact(place:Place){
@@ -278,7 +278,7 @@ function interact(place:Place){
     setMode(mode==='campus'?'floor1':'campus');
     const position=mode==='floor1'?place.approach:campusEntrancePoint(place.id);
     school.player.position.set(position.x,mode==='floor1'?(placeFloor(place)-1)*floorRise:campusHeight(position),position.z);setOverview(false);
-    $('#guide-text').textContent=mode==='floor1'?`${place.name}에 도착했어요. 복도를 따라 학교를 둘러보세요.`:'건물 앞 공간으로 나왔어요.';
+    $('#guide-text').textContent=mode==='floor1'?`${place.name}에 도착했다냥. 복도를 따라 학교를 둘러보라냥.`:'건물 앞 공간으로 나왔다냥.';
     toast(mode==='floor1'?`${place.name}에 도착했어요.`:'건물 앞 전체 보기로 나왔어요.');return;
   }
   if(autoDoors.has(place.id)){if(!openDoors.has(place.id)){openDoors.add(place.id);school.openDoor(place.id,true);}toast(`${place.name} · 자동문이에요. 다가가면 열려요.`);return;}
@@ -288,7 +288,7 @@ function interact(place:Place){
     if(!opening&&distance(point(),place.door)<1.15){toast('문에서 한 걸음 떨어진 뒤 닫아 주세요.');return;}
     const resume=afterPortal;stopRoute();if(opening)openDoors.add(place.id);else openDoors.delete(place.id);
     school.openDoor(place.id,opening);
-    $('#guide-text').textContent=opening?`${place.name} 문을 열었어요. 바닥을 눌러 들어가 둘러보세요.`:`${place.name} 문을 닫았어요.`;
+    $('#guide-text').textContent=opening?`${place.name} 문을 열었다냥. 바닥을 눌러서 들어가 보라냥.`:`${place.name} 문을 닫았다냥.`;
     toast(opening?`${place.name} · 문이 열렸어요`:`${place.name} · 문을 닫았어요`);
     if(opening&&resume)chooseDestination(resume);
     return;
@@ -300,7 +300,7 @@ function sitDown(seat:Seat){
   stopRoute();clearInput();
   seated={seat,back:point()};
   school.player.position.set(seat.x,school.player.position.y,seat.z);school.player.rotation.y=seat.yaw;school.setSeated(seat.y);
-  $('#guide-text').textContent='의자에 앉았어요. Space나 이동키를 누르면 일어나요.';
+  $('#guide-text').textContent='의자에 앉았다냥. Space나 이동키를 누르면 일어난다냥.';
 }
 function standUp(){
   if(!seated)return;
@@ -316,14 +316,14 @@ function startExercise(prop:UpperProp&{exercise:Exercise}){
   school.player.position.set(stance.x,school.player.position.y,stance.z);school.player.rotation.y=stance.yaw;
   school.setActivityPose({activity:prop.exercise,lift:stance.lift});school.setActiveProp(prop.id);school.setFocus(1.8);
   toast(prop.exercise==='run'?'러닝머신이 돌아가요. 가볍게 달려 볼까요?':prop.exercise==='squat'?'바벨을 메고 앉았다 일어나요. 무릎은 발끝 방향으로!':'덤벨을 들고 팔을 굽혀요. 팔꿈치는 몸 옆에 붙이고!');
-  $('#guide-text').textContent='운동 중이에요. 그만하기 버튼이나 이동키를 누르면 내려와요.';
+  $('#guide-text').textContent='운동 중이다냥. 그만하기 버튼이나 이동키를 누르면 내려온다냥.';
 }
 function stopExercise(){
   if(!exercise)return;
   const {back,prop,metres,count}=exercise;exercise=null;
   school.setActivityPose({});school.setActiveProp(undefined);school.setFocus(1);
   school.player.position.set(back.x,school.player.position.y,back.z);
-  $('#guide-text').textContent=prop.exercise==='run'?`러닝머신에서 ${Math.floor(metres)} m를 달렸어요. 수고했어요!`:`${exerciseNames[prop.exercise]} ${count}회를 했어요. 수고했어요!`;
+  $('#guide-text').textContent=prop.exercise==='run'?`러닝머신에서 ${Math.floor(metres)} m를 달렸다냥. 수고했다냥!`:`${exerciseNames[prop.exercise]} ${count}회를 했다냥. 수고했다냥!`;
 }
 function exerciseTick(dt:number){
   const e=exercise!;e.clock+=dt;
@@ -345,7 +345,7 @@ function playPiano(){
   performingUntil=now()+5.4;
   school.setActivityPose({activity:'play'});school.setFocus(1.6);sound.cue('piano');
   toast(sound.settings.effects?'♪ 직접 만든 짧은 곡을 연주해요':'♪ 음악 버튼을 켜면 피아노 소리도 들을 수 있어요');
-  $('#guide-text').textContent='음악실 피아노를 연주하고 있어요. 이동키를 누르면 일어나요.';
+  $('#guide-text').textContent='음악실 피아노를 연주하고 있다냥. 이동키를 누르면 일어난다냥.';
   const {seat}=seated,started=now();
   window.clearInterval(pianoTimer);
   pianoTimer=window.setInterval(()=>{
@@ -407,7 +407,7 @@ function greet(greeter:Greeter){
       showDialog('교장선생님과 이야기','<div id="principal-guide"></div>','교장실에 오신 것을 환영합니다');
       showPrincipalGuide($('#principal-guide'));
     }else{
-      showDialog('교감선생님과 인사','<p class="description greet-text">반가워요! 교무실까지 찾아와 줘서 고마워요.<br>우리 학교는 한 층에 남쪽 교실과 북쪽 교실이 복도를 사이에 두고 마주 보고 있어요. 남쪽 교실에서는 앞 정원이, 북쪽 교실에서는 운동장이 보인답니다. 천천히 둘러보세요!</p><div class="dialog-actions"><button class="primary" id="greet-close">고맙습니다</button></div>','1층 교무실');
+      showDialog('교감선생님과 인사','<p class="description greet-text">아이고, 교무실까지 찾아와 줬구나. 정말 반가워요! 오느라 힘들진 않았어요? 🥹<br>처음 오는 학교는 낯설고 조금 떨릴 수도 있는데, 괜찮아요. 천천히, 마음 편하게 구경해요. 궁금한 게 생기면 언제든 선생님께 물어봐 줘요. 선생님은 늘 여러분 편이에요.<br>우리 학교는 한 층에 남쪽 교실과 북쪽 교실이 복도를 사이에 두고 마주 보고 있어요. 남쪽 교실에서는 앞 정원의 꽃이, 북쪽 교실에서는 운동장이 보인답니다. 🌷<br>와 줘서 정말 고마워요. 오늘 하루도 따뜻하고 행복하게 보내요!</p><div class="dialog-actions"><button class="primary" id="greet-close">감사합니다, 선생님</button></div>','1층 교무실');
       $('#greet-close').onclick=()=>dialog.close();
     }
   },900);
@@ -590,7 +590,7 @@ $('#dialog-close').onclick=()=>dialog.close();
 dialog.addEventListener('close',()=>{sound.duck(false);mapResizeObserver.disconnect();if(dialog.classList.contains('guestbook-dialog'))$('#dialog-content').replaceChildren();dialog.classList.remove('map-dialog','guestbook-dialog');clearInput();$('#school-stage').focus();});
 $('#place-search').addEventListener('input',renderDestinations);
 $('#collapse-destinations').onclick=()=>collapseDestinations(!$('#destinations').classList.contains('collapsed'));
-$('#cancel-route').onclick=()=>{stopRoute();$('#guide-text').textContent='안내를 멈췄어요. 원하는 방향으로 자유롭게 걸어 보세요.';};
+$('#cancel-route').onclick=()=>{stopRoute();$('#guide-text').textContent='안내를 멈췄다냥. 원하는 방향으로 자유롭게 걸어 보라냥.';};
 $('#nearby-action').onclick=()=>{runAction();$('#school-stage').focus();};
 $('#place-info').onclick=()=>{const place=nearby??selected;if(place)showPlace(place);else showHelp();};
 renderDestinations();
@@ -662,7 +662,7 @@ async function init(){
       const prop=upperProps.find(p=>p.id===hit.propId)!;
       if(distance(point(),prop.spot)<=propReach){useProp(prop);return;}
       const path=findSchoolPath(point(),prop.spot,mode,openDoors,currentFloor());
-      if(path.length){stopRoute();walkingPath=path;school.setRoute(path);setOverview(false);$('#guide-text').textContent=`${prop.name} 앞으로 걸어가요. 도착하면 한 번 더 누르거나 Space를 눌러 보세요.`;return;}
+      if(path.length){stopRoute();walkingPath=path;school.setRoute(path);setOverview(false);$('#guide-text').textContent=`${prop.name} 앞으로 걸어간다냥. 도착하면 한 번 더 누르거나 Space를 눌러 보라냥.`;return;}
     }
     if(hit.placeId){const place=allPlaces.find(p=>p.id===hit.placeId);if(place){if(distance(point(),interactionPoint(place))<=interactionRadius(place))interact(place);else if(mode==='floor1')chooseDestination(place);else toast('실내 산책에서 이 장소를 찾아갈 수 있어요.');return;}}
     if(!hit.point||!isWalkable(hit.point,mode,openDoors,currentFloor())){toast('빈 바닥이나 복도를 눌러 이동해 주세요.');return;}
@@ -691,7 +691,7 @@ async function init(){
         const floor=currentFloor(),step=advanceSchoolRoute(point(),walkingPath,dt*6*paceBoost,mode,openDoors,floor);
         school.player.position.set(step.position.x,mode==='floor1'?(floor-1)*floorRise:campusHeight(step.position),step.position.z);walkingPath.splice(0,step.consumed);
         if(step.blocked){stopRoute();toast('문이나 가구 앞에서 멈췄어요. 주변을 확인해 주세요.');}
-        if(!walkingPath.length){school.setRoute([]);if(routeGoal){toast(`${routeGoal.name} 입구에 도착했어요.`);$('#guide-text').textContent=routeGoal.id.startsWith('stairs-')?`${routeGoal.name}에 도착했어요. 올라가기 또는 내려가기 버튼으로 층을 선택해 주세요.`:`${routeGoal.name}에 도착했어요. 가까운 안내 표시나 Space를 눌러 보세요.`;routeGoal=null;$('#route-card').hidden=true;}}
+        if(!walkingPath.length){school.setRoute([]);if(routeGoal){toast(`${routeGoal.name} 입구에 도착했어요.`);$('#guide-text').textContent=routeGoal.id.startsWith('stairs-')?`${routeGoal.name}에 도착했다냥. 올라가기 또는 내려가기 버튼으로 층을 골라 달라냥.`:`${routeGoal.name}에 도착했다냥. 가까운 안내 표시나 Space를 눌러 보라냥.`;routeGoal=null;$('#route-card').hidden=true;}}
       }
     }
     const after=point(),moving=distance(before,after)>.0001;
