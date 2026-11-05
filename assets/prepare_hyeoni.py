@@ -57,20 +57,6 @@ for loop in body.data.loops:
     hair_votes[loop.vertex_index] += brown_hair[int(min(max(texel_v, 0), 1)*(height-1)), int(min(max(texel_u, 0), 1)*(width-1))]
     loop_counts[loop.vertex_index] += 1
 original_hair_vertex = hair_votes/np.maximum(loop_counts, 1) > .6
-# 이마를 덮던 창이의 앞머리 면(머리색 면 가운데 이마 높이 앞쪽)을 지워 이마가 드러나게 한다. 눈썹·얼굴 면은 그대로 둔다.
-forehead_bm = bmesh.new()
-forehead_bm.from_mesh(body.data)
-forehead_bm.verts.ensure_lookup_table()
-fringe = [face for face in forehead_bm.faces
-          if sum(bool(original_hair_vertex[v.index]) for v in face.verts) >= 2
-          and sum(v.co.y for v in face.verts)/len(face.verts) < -.28
-          and sum(v.co.z for v in face.verts)/len(face.verts) > 1.17]
-bmesh.ops.delete(forehead_bm, geom=fringe, context='FACES_ONLY')
-forehead_bm.to_mesh(body.data)
-forehead_bm.free()
-body.data.update()
-uv_layer = body.data.uv_layers.active.data
-print('FRINGE_FACES_DELETED', len(fringe), flush=True)
 leg_groups = ('playerLegL', 'playerLegR', 'mixamorig:LeftLeg', 'mixamorig:RightLeg', 'playerFootL', 'playerFootR')
 body.data.calc_loop_triangles()
 skin_samples, leg_triangles = [], []
@@ -83,10 +69,6 @@ for triangle in body.data.loop_triangles:
         skin_samples.append(image[int(w*(height-1)), int(u*(width-1)), :3].copy())
     leg_weight = max(sum(weights_by_vertex[v.index].get(name, 0) for name in leg_groups) for v in verts)
     if leg_weight > .5 and .105 < mean_z < .5:
-        leg_triangles.append(triangle)
-    # 이마(눈썹 위)는 얼룩 없이 고른 살색이 되도록 칠한다.
-    mean_x = sum(v.co.x for v in verts)/3
-    if mean_z > 1.26 and (mean_z > 1.31 or mean_x < .06 or mean_x > .17) and sum(v.co.y for v in verts)/3 < -.25 and abs(mean_x-.03) < .30:
         leg_triangles.append(triangle)
 skin = np.median(np.array(skin_samples), axis=0)
 leg_region = np.zeros((height, width), dtype=bool)
@@ -173,7 +155,7 @@ def shell(name, rings, material, thickness, weights):
 
 
 # ---- 긴 생머리: 가운데 가르마, 정수리는 머리 모양을 따라 살짝 갸름하게 덮고, 머리결이 위에서 아래로 곧게 흘러 어깨 아래(z≈.74)에서 끝난다.
-# 참고 사진처럼 앞머리 없이 가운데 가르마로 이마를 드러내고, 가르마에서 머리카락이 양옆으로 흘러 얼굴을 감싸며 가슴 앞까지 내려온다. 얼굴(눈·볼·코)은 가리지 않는다.
+# 참고 사진처럼 가운데 가르마에서 머리카락이 양옆으로 곧게 흘러 얼굴을 감싸며 가슴 앞까지 내려온다. 얼굴(눈·볼·코)은 가리지 않는다.
 HAIR_CENTER = (.015, 0.0)
 rx_table = [(1.712, .04), (1.695, .11), (1.665, .20), (1.62, .29), (1.56, .345), (1.50, .385), (1.44, .40), (1.35, .40), (1.25, .395), (1.17, .36), (1.08, .315), (.98, .29), (.86, .275), (.74, .26), (.64, .25)]
 ry_table = [(1.712, .04), (1.695, .11), (1.665, .20), (1.62, .285), (1.56, .325), (1.50, .365), (1.44, .385), (1.35, .39), (1.25, .385), (1.17, .35), (1.08, .31), (.98, .28), (.86, .26), (.74, .24), (.64, .23)]
@@ -189,9 +171,9 @@ for i in range(steps_down+1):
         d = min(phi, 2*math.pi-phi)  # 정면에서 벌어진 각
         # 끝이 곧게 이어지되 가닥마다 길이가 조금씩 달라 자연스럽게 떨어진다
         long_bottom = .64+.03*math.sin(phi*9+.6)+.018*math.sin(phi*23+2.1)
-        # 가르마(d=0)에서 시작해 양옆으로 내려가는 머리선: 가운데 z 1.42에서 눈썹(z≈1.25) 위를 지나 관자놀이 z 1.16으로. 그 아래는 긴 머리가 얼굴을 감싼다.
-        bang_bottom = 1.42-.26*smooth((d-math.radians(14))/math.radians(30))
-        bottom = lerp(bang_bottom, long_bottom, smooth((d-math.radians(40))/math.radians(12)))
+        # 가운데 가르마에서 양옆으로 내려가는 앞머리: 이마와 창이의 원래 앞머리를 덮고 눈은 가리지 않는다. 얼굴은 창이 그대로 쓴다. 그 아래는 긴 머리가 얼굴을 감싼다.
+        bang_bottom = 1.205+.05*smooth(1-d/math.radians(26))
+        bottom = lerp(bang_bottom, long_bottom, smooth((d-math.radians(33))/math.radians(14)))
         z = lerp(1.712, bottom, t)
         rx, ry = profile(rx_table, z), profile(ry_table, z)
         # 얼굴 옆 머리카락은 목·어깨 앞을 지나므로 아래로 갈수록 몸 쪽으로 모은다
@@ -217,28 +199,6 @@ def hair_weights(x, y, z):
 
 
 hair = shell('hyeoni long hair', hair_rings, hair_material, .03, hair_weights)
-
-# 왼쪽 눈썹: 창이 모형은 앞머리에 가려 오른쪽 눈썹만 그려져 있어, 가르마로 이마가 드러난 만큼 반대쪽 눈썹을 짝에 맞게 더한다.
-brow_bm = bmesh.new()
-brow_points = [(-.125, -.352, 1.262), (-.098, -.362, 1.282), (-.068, -.364, 1.285), (-.04, -.358, 1.272)]
-for a_point, b_point in zip(brow_points, brow_points[1:]):
-    direction = Vector(b_point)-Vector(a_point)
-    cone = bmesh.ops.create_cone(brow_bm, cap_ends=True, segments=6, radius1=.012, radius2=.012, depth=direction.length)
-    bmesh.ops.transform(brow_bm, matrix=Matrix.Translation((Vector(a_point)+Vector(b_point))/2)@direction.to_track_quat('Z', 'Y').to_matrix().to_4x4(), verts=cone['verts'])
-brow_mesh = bpy.data.meshes.new('hyeoni brow')
-brow_bm.to_mesh(brow_mesh)
-brow_bm.free()
-brow = bpy.data.objects.new('hyeoni brow', brow_mesh)
-bpy.context.collection.objects.link(brow)
-brow.data.materials.append(flat_material('hyeoni brow', (.05, .03, .028), .6))
-for polygon in brow.data.polygons:
-    polygon.use_smooth = True
-for bone in rig.data.bones:
-    brow.vertex_groups.new(name=bone.name)
-brow.vertex_groups['mixamorig:Head'].add(list(range(len(brow.data.vertices))), 1.0, 'REPLACE')
-brow.parent = rig
-brow_armature = brow.modifiers.new('Armature', 'ARMATURE')
-brow_armature.object = rig
 
 # ---- 무릎 길이 주름치마: 허리(z≈.60)에서 무릎 바로 위(z≈.30)까지 퍼진다.
 skirt_center = (.05, -.045)
@@ -277,7 +237,7 @@ for vertex in body.data.vertices:
         pull = 1-.12*smooth((vertex.co.z-1.15)/.1)
         vertex.co.x = .02+(vertex.co.x-.02)*pull
         vertex.co.y = -.01+(vertex.co.y+.01)*pull
-for target in (body, hair, brow):
+for target in (body, hair):
     for vertex in target.data.vertices:
         w = smooth((vertex.co.z-.95)/.12)
         offset = vertex.co-HEAD_PIVOT
