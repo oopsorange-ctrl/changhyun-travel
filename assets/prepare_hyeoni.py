@@ -11,6 +11,7 @@ from pathlib import Path
 import bmesh
 import bpy
 import numpy as np
+from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT/'public/school-player-meshy.glb'
@@ -146,29 +147,34 @@ def shell(name, rings, material, thickness, weights):
     return obj
 
 
-# ---- 긴 머리: 머리 뒤와 옆을 덮고 어깨 아래(z≈.80)까지 내려온다. 얼굴 앞(정면 약 130도)은 비워 둔다.
-HAIR_CENTER = (.04, 0.0)
-rx_table = [(1.58, .22), (1.52, .33), (1.45, .405), (1.35, .43), (1.25, .425), (1.15, .39), (1.00, .335), (.90, .285), (.80, .255)]
-ry_table = [(1.58, .21), (1.52, .32), (1.45, .39), (1.35, .415), (1.25, .41), (1.15, .38), (1.00, .31), (.90, .25), (.80, .215)]
-steps_around, steps_down = 48, 16
-front_gap = math.radians(65)  # 정면에서 좌우로 비워 두는 각
+# ---- 긴 머리: 머리 위를 완전히 덮고(창이의 삐죽한 앞머리가 비치지 않게) 어깨 아래(z≈.80)까지 내려온다.
+# 앞머리는 가운데 가르마 커튼뱅(가운데가 높고 양옆이 눈썹 위까지), 얼굴 양옆으로 머리카락이 내려온다. 얼굴(눈·볼·코)은 가리지 않는다.
+HAIR_CENTER = (.03, 0.0)
+rx_table = [(1.712, .05), (1.69, .15), (1.65, .27), (1.59, .35), (1.52, .415), (1.45, .45), (1.35, .45), (1.25, .44), (1.15, .40), (1.00, .335), (.90, .285), (.80, .255)]
+ry_table = [(1.712, .05), (1.69, .15), (1.65, .26), (1.59, .34), (1.52, .395), (1.45, .43), (1.35, .44), (1.25, .435), (1.15, .39), (1.00, .31), (.90, .25), (.80, .215)]
+steps_around, steps_down = 56, 16
 hair_rings = []
 for i in range(steps_down+1):
     t = i/steps_down
     ring = []
     for j in range(steps_around+1):
-        phi = lerp(front_gap, 2*math.pi-front_gap, j/steps_around)  # 0=정면(-Y), 양옆 90도, 뒤 180도
-        # 아래 끝이 물결치듯 불규칙하게 (가닥 느낌)
-        bottom = .80+.035*math.sin(phi*11)+.02*math.sin(phi*5+1)
-        z = lerp(1.58, bottom, t)
+        phi = 2*math.pi*j/steps_around  # 0=정면(-Y), 양옆 90도, 뒤 180도
+        d = min(phi, 2*math.pi-phi)  # 정면에서 벌어진 각
+        wavy = .035*math.sin(phi*11)+.02*math.sin(phi*5+1)  # 아래 끝이 물결치듯 불규칙하게 (가닥 느낌)
+        long_bottom = .80+wavy
+        # 앞머리(뱅): 이마를 덮고 눈 바로 위(z≈1.235)에서 끝난다. 창이의 삐죽한 앞머리가 비치지 않게 눈썹까지 덮는다.
+        bang_bottom = 1.235+.02*smooth(1-d/math.radians(30))
+        # 얼굴 옆 머리카락: d 36도~50도에서 앞머리 끝이 긴 머리 끝으로 이어진다
+        bottom = lerp(bang_bottom, long_bottom, smooth((d-math.radians(36))/math.radians(14)))
+        z = lerp(1.712, bottom, t)
         rx, ry = profile(rx_table, z), profile(ry_table, z)
-        # 정면에 가까운 쪽(관자놀이·귀 옆)은 얼굴에 붙게 안쪽으로 모은다.
-        side = smooth((phi-front_gap)/.6)
-        rx *= lerp(.88, 1, side)
-        ry *= lerp(.88, 1, side)
-        ring.append((HAIR_CENTER[0]+rx*math.sin(phi), HAIR_CENTER[1]-ry*math.cos(phi)*1.0, z))
+        strand = 1+.012*math.sin(phi*26)*smooth((1.62-z)/.2)  # 머리 결이 보이는 얕은 골
+        rx *= strand
+        ry *= strand
+        ring.append((HAIR_CENTER[0]+rx*math.sin(phi), HAIR_CENTER[1]-ry*math.cos(phi), z))
     hair_rings.append(ring)
-hair_material = flat_material('hyeoni hair', (.011, .011, .013), .5)
+# 완만한 갈색이 도는 검정(너무 새까맣게 뭉치지 않게)과 은은한 윤기
+hair_material = flat_material('hyeoni hair', (.03, .024, .024), .42)
 
 
 def hair_weights(x, y, z):
@@ -176,7 +182,34 @@ def hair_weights(x, y, z):
     return [('mixamorig:Head', head), ('mixamorig:Spine2', 1-head)]
 
 
-hair = shell('hyeoni long hair', hair_rings, hair_material, .035, hair_weights)
+hair = shell('hyeoni long hair', hair_rings, hair_material, .03, hair_weights)
+
+
+# 머리 리본: 한쪽 관자놀이 위쪽에 작은 나비 모양 리본(진한 자주색)
+ribbon_material = flat_material('hyeoni ribbon', (.30, .045, .09), .5)
+ribbon_bm = bmesh.new()
+RIBBON_CENTER = Vector((HAIR_CENTER[0]+.47*math.sin(math.radians(62)), HAIR_CENTER[1]-.46*math.cos(math.radians(62)), 1.52))
+for side in (-1, 1):
+    wing = bmesh.ops.create_uvsphere(ribbon_bm, u_segments=8, v_segments=6, radius=1)
+    bmesh.ops.scale(ribbon_bm, vec=(.075, .035, .055), verts=wing['verts'])
+    bmesh.ops.rotate(ribbon_bm, cent=(0, 0, 0), matrix=Matrix.Rotation(side*math.radians(28), 3, 'Y'), verts=wing['verts'])
+    bmesh.ops.translate(ribbon_bm, vec=RIBBON_CENTER+Vector((side*.08, 0, side*.01)), verts=wing['verts'])
+knot = bmesh.ops.create_uvsphere(ribbon_bm, u_segments=8, v_segments=6, radius=.036)
+bmesh.ops.translate(ribbon_bm, vec=RIBBON_CENTER, verts=knot['verts'])
+ribbon_mesh = bpy.data.meshes.new('hyeoni ribbon')
+ribbon_bm.to_mesh(ribbon_mesh)
+ribbon_bm.free()
+ribbon = bpy.data.objects.new('hyeoni ribbon', ribbon_mesh)
+bpy.context.collection.objects.link(ribbon)
+ribbon.data.materials.append(ribbon_material)
+for polygon in ribbon.data.polygons:
+    polygon.use_smooth = True
+for bone in rig.data.bones:
+    ribbon.vertex_groups.new(name=bone.name)
+ribbon.vertex_groups['mixamorig:Head'].add(list(range(len(ribbon.data.vertices))), 1.0, 'REPLACE')
+ribbon.parent = rig
+ribbon_armature = ribbon.modifiers.new('Armature', 'ARMATURE')
+ribbon_armature.object = rig
 
 # ---- 무릎 길이 주름치마: 허리(z≈.60)에서 무릎 바로 위(z≈.30)까지 퍼진다.
 skirt_center = (.05, -.045)

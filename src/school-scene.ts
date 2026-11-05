@@ -177,6 +177,27 @@ export async function createSchool(host:HTMLElement) {
 
   // ── 바깥: 풀밭, 앞마당, 운동장, 유집체육관, 후문 ────────────────────────────────
   const earth={grass:material(0x86a97a),lawn:material(0x9cbd86),track:material(0xb87967),path:material(0xe3dcc7),pave:material(0xcfd3c5),leaf:material(0x6f9a63),leaf2:material(0x86ad6f),trunk:material(0x8a6a4c),gym:material(0xd6d9d2),gymRoof:material(0x9aa49e),stripe:material(0x7a9f74),standBlue:material(0x5d8fb8),standWhite:material(0xf3f6f8)};
+  // 유집체육관 붉은 벽돌: 코드로 그린 벽돌무늬(2.4 m마다 반복). 벽면 크기에 맞춰 무늬를 늘이지 않고 되풀이한다.
+  const brickMap=(()=>{
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+    const g=canvas.getContext('2d')!;
+    g.fillStyle='#b8a899';g.fillRect(0,0,256,256);
+    const rows=12,courseHeight=256/rows,perRow=5,brickWidth=256/perRow;
+    for(let r=0;r<rows;r++)for(let c=-1;c<=perRow;c++) {
+      const t=Math.abs((r*7+c*13+r*c*3)%6)/6;
+      g.fillStyle=`hsl(${7+t*7} ${46+t*14}% ${30+t*10}%)`;
+      g.fillRect((c+(r%2?.5:0))*brickWidth+1.5,r*courseHeight+1.5,brickWidth-3,courseHeight-3);
+    }
+    const map=new THREE.CanvasTexture(canvas);map.wrapS=map.wrapT=THREE.RepeatWrapping;map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;
+    return map;
+  })();
+  const brick=new THREE.MeshStandardMaterial({map:brickMap,roughness:.92,metalness:0});
+  function brickBox(group:THREE.Group,x:number,y:number,z:number,w:number,h:number,d:number) {
+    const geometry=new THREE.BoxGeometry(w,h,d),uv=geometry.getAttribute('uv'),tile=2.4;
+    const faces=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]] as const;
+    for(let face=0;face<6;face++)for(let i=0;i<4;i++){const k=face*4+i;uv.setXY(k,uv.getX(k)*faces[face]![0]/tile,uv.getY(k)*faces[face]![1]/tile);}
+    staticGeometry(group,geometry,brick,x,y,z);
+  }
   const bounds=campusBounds,groundCenter=center(bounds);
   // 낮은 구역(서쪽 비탈·별관 앞마당)은 풀밭에 구멍을 낸다.
   const subtract=(base:Rect,holes:Rect[]):Rect[]=>holes.reduce<Rect[]>((pieces,h)=>pieces.flatMap(r=>{
@@ -192,6 +213,35 @@ export async function createSchool(host:HTMLElement) {
   box(campusContext,earth.pave,buildingCenterX,-.03,frontZ+1.2,buildingWidth+4,.07,2.4,true);
   box(campusContext,earth.pave,buildingCenterX,-.03,schoolBounds.minZ-1.4,buildingWidth+4,.07,2.8,true);
   for(const side of [-1,1])for(let z=frontZ+4;z<frontZ+30;z+=5)plant(campusContext,frontDoor.x+side*2.6,.0,z,1.4);
+  // 앞 정원 꽃밭: 길 양옆에 흙 화단을 두고 색이 무리 지어 피게 심는다. 걷는 길에는 놓지 않는다.
+  {
+    const petals=[0xf26b8a,0xffd23f,0xffffff,0xb57edc,0xff8a3d,0xf5a6c8,0xe83f3f].map(color=>material(color,.7));
+    const stemMaterial=material(0x5c8d4d),edging=material(0x8a7360),soil=material(0x6e5340);
+    const unit=(i:number)=>{const x=Math.sin(i*91.7+3.1)*43758.5453;return x-Math.floor(x);};
+    let seed=0;
+    const bed=(x0:number,x1:number,z0:number,z1:number)=>{
+      x0=Math.max(x0,frontLawn.minX+.8);x1=Math.min(x1,frontLawn.maxX-.8);
+      if(x1-x0<1||z1-z0<1)return;
+      const cx=(x0+x1)/2,cz=(z0+z1)/2;
+      box(campusContext,soil,cx,.06,cz,x1-x0,.12,z1-z0);
+      for(const z of [z0,z1])box(campusContext,edging,cx,.1,z,x1-x0+.2,.2,.14);
+      for(const x of [x0,x1])box(campusContext,edging,x,.1,cz,.14,.2,z1-z0);
+      const patch=2.2,colorAt=(x:number,z:number)=>Math.floor(unit(Math.floor(x/patch)*17+Math.floor(z/patch)*29+7)*petals.length);
+      for(let x=x0+.4;x<x1-.3;x+=.55)for(let z=z0+.4;z<z1-.3;z+=.55) {
+        seed++;
+        const fx=x+(unit(seed)-.5)*.3,fz=z+(unit(seed+500)-.5)*.3,height=.3+unit(seed+900)*.28;
+        staticGeometry(campusContext,new THREE.CylinderGeometry(.018,.024,height,4),stemMaterial,fx,.12+height/2,fz);
+        const size=.11+unit(seed+1300)*.06,color=unit(seed+1700)<.8?colorAt(x,z):Math.floor(unit(seed+2100)*petals.length);
+        staticGeometry(campusContext,new THREE.SphereGeometry(size,6,4),petals[color]!,fx,.12+height+size*.4,fz);
+      }
+    };
+    for(const side of [-1,1]) {
+      const near=frontDoor.x+side*4,far=frontDoor.x+side*13,x0=Math.min(near,far),x1=Math.max(near,far);
+      for(const [a,b] of [[4,10],[14,20],[24,30]] as const)bed(x0,x1,frontZ+a,frontZ+b);
+      const wide0=frontDoor.x+side*14.5,wide1=frontDoor.x+side*21;
+      bed(Math.min(wide0,wide1),Math.max(wide0,wide1),frontZ+8,frontZ+26);
+    }
+  }
   // 운동장: 트랙 + 잔디 + 선
   const fieldCenter=center(fieldRect),pitchCenter=center(pitchRect);
   box(campusContext,earth.track,fieldCenter.x,-.02,fieldCenter.z,fieldRect.maxX-fieldRect.minX,.06,fieldRect.maxZ-fieldRect.minZ,true);
@@ -212,10 +262,18 @@ export async function createSchool(host:HTMLElement) {
   for(let i=0,x=standsRect.minX;x<standsRect.maxX-.01;i++,x+=4)box(campusContext,i%2?earth.standWhite:earth.standBlue,x+2,3.25,center(standsRect).z,Math.min(4,standsRect.maxX-x),.14,standsRect.maxZ-standsRect.minZ,true);
   // 유집체육관: 운동장 건너편
   const gymCenter=center(gymRect);
-  box(campusContext,earth.gym,gymCenter.x,5,gymCenter.z,gymRect.maxX-gymRect.minX,10,gymRect.maxZ-gymRect.minZ,true);
-  box(campusContext,earth.gymRoof,gymCenter.x,10.2,gymCenter.z,gymRect.maxX-gymRect.minX+.8,.5,gymRect.maxZ-gymRect.minZ+.8,true);
-  box(campusContext,facade.courtEdge,gymCenter.x,1.2,gymRect.maxZ+.05,gymRect.maxX-gymRect.minX-1,2.4,.1);
-  sign(campusContext,gymName,gymCenter.x,6.2,gymRect.maxZ+.15,6);
+  const gymWidth=gymRect.maxX-gymRect.minX,gymDepth=gymRect.maxZ-gymRect.minZ;
+  brickBox(campusContext,gymCenter.x,5,gymCenter.z,gymWidth,10,gymDepth);
+  box(campusContext,earth.gymRoof,gymCenter.x,10.2,gymCenter.z,gymWidth+.8,.5,gymDepth+.8);
+  // 아래쪽 콘크리트 띠, 높은 창 줄, 출입구 차양
+  const concrete=material(0x9b968e),gymGlass=material(0x4f6b7c,.35);
+  box(campusContext,concrete,gymCenter.x,.35,gymRect.maxZ+.04,gymWidth+.1,.7,.1);
+  box(campusContext,gymGlass,gymCenter.x,8.4,gymRect.maxZ+.05,gymWidth-5,1.2,.08);
+  for(let x=gymRect.minX+3.5;x<gymRect.maxX-3;x+=3)box(campusContext,concrete,x,8.4,gymRect.maxZ+.07,.12,1.3,.08);
+  box(campusContext,gymGlass,gymCenter.x,1.6,gymRect.maxZ+.05,6,3.2,.08);
+  box(campusContext,concrete,gymCenter.x,3.5,gymRect.maxZ+1.2,8.4,.25,2.4);
+  for(const side of [-1,1])cylinder(campusContext,concrete,gymCenter.x+side*3.8,1.75,gymRect.maxZ+2.1,.12,3.5);
+  sign(campusContext,gymName,gymCenter.x,6.0,gymRect.maxZ+.15,6);
   // 후문
   for(const side of [-1,1]){cylinder(campusContext,hall.metal,backGate.x+side*2.4,1.6,backGate.z,.14,3.2);for(let i=0;i<4;i++)rail(campusContext,new THREE.Vector3(backGate.x+side*(2.6+i*1.5),.9,backGate.z),new THREE.Vector3(backGate.x+side*(2.6+(i+1)*1.5),.9,backGate.z));}
   box(campusContext,hall.metal,backGate.x,3.1,backGate.z,5,.14,.14,true);
@@ -305,6 +363,19 @@ export async function createSchool(host:HTMLElement) {
     staticGeometry(campusContext,new THREE.SphereGeometry(1.5*size,8,6),i%2?earth.leaf:earth.leaf2,x,3.1*size,z);
     staticGeometry(campusContext,new THREE.SphereGeometry(1.1*size,8,6),i%2?earth.leaf2:earth.leaf,x+.4*size,4.1*size,z-.3*size);
     planted++;
+  }
+  // 운동장 가장자리 단풍나무: 빨강·주황·노랑이 섞여 울긋불긋하다. 서쪽·동쪽·북쪽(체육관 서편) 가장자리를 따라 심는다.
+  {
+    const autumn=[0xc4302b,0xd9482b,0xe8742a,0xf0a030,0xb3262e,0xf2c14e].map(color=>material(color,.85));
+    const blobs=[[0,3.5,0,1.5],[.95,3.05,.3,1.1],[-.85,3.1,-.4,1.15],[.2,4.4,-.2,1.05],[-.3,3.1,.95,1.0],[.5,3.0,-.9,1.0]] as const;
+    const maple=(x:number,z:number,size:number,seed:number)=>{
+      cylinder(campusContext,earth.trunk,x,1.25*size,z,.2*size,2.5*size);
+      blobs.forEach(([dx,dy,dz,radius],i)=>staticGeometry(campusContext,new THREE.SphereGeometry(radius*size,8,6),autumn[Math.floor(random(seed*13+i*3.7)*autumn.length)]!,x+dx*size,dy*size,z+dz*size));
+    };
+    const spots:[number,number][]=[];
+    for(let z=fieldRect.minZ+2;z<fieldRect.maxZ-1;z+=4.6){spots.push([fieldRect.minX-2.2,z]);spots.push([fieldRect.maxX+2.4,z]);}
+    for(let x=fieldRect.minX+1;x<gymRect.minX-3;x+=4.8)spots.push([x,fieldRect.minZ-2.2]);
+    spots.forEach(([x,z],i)=>maple(x+(random(i*5+1)-.5)*.8,z+(random(i*5+2)-.5)*.8,.95+random(i*5+3)*.35,i+1));
   }
 
   // 건물 뒤(운동장 쪽)에 서면 외벽이 학생을 가리므로, 이 재질들은 따로 복제해 두고 가릴 때만 투명하게 만든다.

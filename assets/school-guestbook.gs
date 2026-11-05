@@ -125,6 +125,7 @@ function doGet(event) {
     if (action === 'guestbook') return getApprovedEntries();
     if (action === 'principal') return getSchoolGuide();
     if (action === 'rooms') return getRoomGuide_();
+    if (action === 'neis') return getNeisInfo();
     throw new Error('지원하지 않는 요청입니다.');
   });
   const principal = event && event.parameter && event.parameter.view === 'principal';
@@ -147,6 +148,49 @@ function doPost(event) {
     if (input.action !== 'submit') throw new Error('지원하지 않는 요청입니다.');
     return submitEntry(input);
   });
+}
+
+// 나이스(NEIS) 교육정보 개방 포털: 오늘의 급식과 다가오는 학사일정.
+// 인증키는 코드나 저장소에 쓰지 않고 스크립트 속성 NEIS_KEY에만 둔다(프로젝트 설정 → 스크립트 속성).
+// 교육청·학교 코드는 공개 정보다. 다른 학교는 스크립트 속성 NEIS_OFFICE, NEIS_SCHOOL로 바꾼다(기본값: 창현고).
+function neisRows_(service, query) {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('NEIS_KEY');
+  if (!key) throw new Error('급식·학사일정을 준비 중이에요.');
+  const office = props.getProperty('NEIS_OFFICE') || 'J10', school = props.getProperty('NEIS_SCHOOL') || '7530208';
+  const url = 'https://open.neis.go.kr/hub/' + service + '?KEY=' + encodeURIComponent(key) + '&Type=json&pSize=100'
+    + '&ATPT_OFCDC_SC_CODE=' + encodeURIComponent(office) + '&SD_SCHUL_CODE=' + encodeURIComponent(school) + query;
+  const response = UrlFetchApp.fetch(url, {muteHttpExceptions: true});
+  if (response.getResponseCode() !== 200) throw new Error('급식·학사일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+  const body = JSON.parse(response.getContentText());
+  const block = body[service];
+  // 자료가 없는 기간은 service 대신 RESULT(INFO-200)만 돌아온다.
+  return block && block[1] && block[1].row ? block[1].row : [];
+}
+
+function neisDay_(date) { return Utilities.formatDate(date, 'Asia/Seoul', 'yyyyMMdd'); }
+function neisIso_(ymd) { return ymd.slice(0, 4) + '-' + ymd.slice(4, 6) + '-' + ymd.slice(6, 8); }
+
+function getNeisInfo() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('neis');
+  if (cached) return JSON.parse(cached);
+  const now = new Date(), later = function(days) { return new Date(now.getTime() + days * 86400000); };
+  const meals = neisRows_('mealServiceDietInfo', '&MLSV_FROM_YMD=' + neisDay_(now) + '&MLSV_TO_YMD=' + neisDay_(later(14)))
+    .map(function(row) {
+      return {
+        date: neisIso_(String(row.MLSV_YMD)), type: String(row.MMEAL_SC_NM),
+        // 알레르기 번호 (1.2.5)는 화면이 좁고 복잡해서 뺀다. 줄바꿈은 <br/>로 온다.
+        menu: String(row.DDISH_NM).split(/<br\s*\/?>/i).map(function(item) { return item.replace(/\s*\([0-9.]+\)\s*/g, ' ').replace(/\s+/g, ' ').trim(); }).filter(Boolean),
+        calories: String(row.CAL_INFO || ''),
+      };
+    }).slice(0, 12);
+  const schedule = neisRows_('SchoolSchedule', '&AA_FROM_YMD=' + neisDay_(now) + '&AA_TO_YMD=' + neisDay_(later(60)))
+    .filter(function(row) { return !/토요휴업일/.test(String(row.EVENT_NM)); })
+    .map(function(row) { return {date: neisIso_(String(row.AA_YMD)), name: String(row.EVENT_NM)}; }).slice(0, 15);
+  const result = {meals: meals, schedule: schedule};
+  cache.put('neis', JSON.stringify(result), 1800);
+  return result;
 }
 
 function getRoomGuide_() {

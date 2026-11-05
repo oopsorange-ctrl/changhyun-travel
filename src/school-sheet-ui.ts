@@ -2,6 +2,7 @@ import {schoolConfig} from './school-config.ts';
 type Entry={date:string;nickname:string;message:string};
 type Guide={greeting:string;topics:{title:string;text:string}[]};
 type RoomGuide={id:string;text:string};
+export type Neis={meals:{date:string;type:string;menu:string[];calories:string}[];schedule:{date:string;name:string}[]};
 export async function schoolData<T>(action:string,input?:Record<string,unknown>):Promise<T>{
   // Public Apps Script data endpoint; deliberately omit Google account cookies.
   if(!schoolConfig.dataUrl)throw new Error('아직 학교 안내 시트를 연결하지 않았어요.');
@@ -17,6 +18,34 @@ export async function schoolData<T>(action:string,input?:Record<string,unknown>)
 }
 const element=<K extends keyof HTMLElementTagNameMap>(tag:K,text='',className='')=>{const el=document.createElement(tag);el.textContent=text;el.className=className;return el;};
 const message=(error:unknown)=>error instanceof Error&&error.name!=='TypeError'&&error.name!=='TimeoutError'?error.message:'연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.';
+
+const weekdays=['일','월','화','수','목','금','토'];
+/** '2026-11-05' → '11월 5일(목)'. 요일은 시간대와 무관하게 날짜만으로 구한다. */
+export const neisDate=(iso:string)=>{const [year,month,day]=iso.split('-').map(Number);return `${month}월 ${day}일(${weekdays[new Date(Date.UTC(year!,month!-1,day)).getUTCDay()]})`;};
+
+// 급식·학사일정은 나이스(교육정보 개방 포털) 자료를 Apps Script가 가져와 준다. 인증키는 스크립트 속성에만 있고 이 코드에는 없다.
+let neisRequest:Promise<Neis>|undefined;
+const loadNeis=()=>{neisRequest??=schoolData<Neis>('neis').catch(error=>{neisRequest=undefined;throw error;});return neisRequest;};
+export function neisSection(kind:'meal'|'schedule'):HTMLElement{
+  const host=element('div','','sheet-neis'),status=element('p','불러오는 중이에요.','description');host.append(status);
+  loadNeis().then(data=>{
+    const list=element('div','','sheet-neis-list');
+    if(kind==='meal') {
+      const days=[...new Set(data.meals.map(meal=>meal.date))].slice(0,3);
+      for(const date of days)for(const meal of data.meals.filter(item=>item.date===date)) {
+        const block=element('section');
+        block.append(element('h4',`${neisDate(date)} ${meal.type}${meal.calories?` · ${meal.calories}`:''}`),element('p',meal.menu.join(' · '),'sheet-text'));
+        list.append(block);
+      }
+      status.textContent=days.length?'오늘부터 곧 나올 급식이에요.':'아직 올라온 급식 정보가 없어요.';
+    } else {
+      for(const event of data.schedule)list.append(element('p',`${neisDate(event.date)}  ${event.name}`,'sheet-text'));
+      status.textContent=data.schedule.length?'다가오는 학사일정이에요.':'곧 있을 학사일정이 없어요.';
+    }
+    host.append(list,element('small','나이스 교육정보 개방 포털 자료예요. 학교 사정으로 바뀔 수 있어요.','source-note'));
+  }).catch(error=>{status.textContent=message(error);});
+  return host;
+}
 
 // A line holding only --- in the sheet text starts a new dialog page.
 export const sheetPages=(text:string)=>text.replace(/\r\n?/g,'\n').split(/^[ \t]*-{3,}[ \t]*$/m).map(page=>page.trim()).filter(Boolean);
@@ -55,6 +84,13 @@ export function showPrincipalGuide(host:HTMLElement){
           const back=element('button','다른 이야기 듣기','secondary');back.onclick=()=>menu(Infinity);
           paged(topic.title,topic.text,{finish:back});
         };choices.append(button);}
+        for(const [kind,title] of [['meal','오늘의 급식'],['schedule','다가오는 학사일정']] as const) {
+          const button=element('button',title,'secondary');button.onclick=()=>{
+            const back=element('button','다른 이야기 듣기','secondary');back.onclick=()=>menu(Infinity);
+            body.replaceChildren(element('h3',title),neisSection(kind),element('div','','dialog-actions sheet-pager'));
+            body.lastElementChild!.append(back);back.focus();
+          };choices.append(button);
+        }
         if(!guide.topics.length)choices.append(element('p','학교 이야기를 준비하고 있어요. 편안하게 둘러보세요.','source-note'));
         paged(undefined,guide.greeting,{start,extra:choices});
       };menu();
@@ -67,6 +103,9 @@ export function showPrincipalGuide(host:HTMLElement){
 export function showRoomGuide(host:HTMLElement,id:string){
   const text=element('p','안내를 불러오고 있어요.','description sheet-text'),retry=element('button','다시 불러오기','quiet');
   host.append(text,retry);
+  // 급식실은 오늘의 급식, 행정실·교무실은 학사일정을 함께 보여 준다.
+  if(id==='dining')host.append(neisSection('meal'));
+  else if(id==='admin'||id==='teachers-1')host.append(neisSection('schedule'));
   async function load(){
     retry.disabled=true;
     try{const rows=await schoolData<RoomGuide[]>('rooms');text.textContent=rows.find(row=>row.id===id)?.text??'아직 입력된 내용이 없습니다';}

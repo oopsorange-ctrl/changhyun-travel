@@ -160,3 +160,10 @@ dialog.map-dialog[open]{display:flex;flex-direction:column}
 .hero-card:hover{transform:translateY(-1px)}
 .hero-card[aria-pressed=true]{border-color:#5f7f64;background:#e1ecd6}
 @media (max-width:520px){.hero-pick{grid-template-columns:1fr}}
+/* 폰 가로 화면: 메뉴(방명록·친구 바꾸기 등)를 열면 아래 큰 상호작용 버튼이 겹치므로 메뉴가 열려 있는 동안 숨기고, 낮은 화면에서는 메뉴 목록이 스크롤되게 한다. */
+@media (orientation:landscape) and (max-height:560px){
+  #hud.menu-open .nearby-action{display:none}
+  #hud.menu-open .scene-tools{max-height:calc(100dvh - 66px);overflow-y:auto;overscroll-behavior:contain;pointer-events:auto}
+}
+
+.sheet-neis{margin-top:14px}.sheet-neis-list section{padding:10px 0;border-top:1px solid #dce1d2}.sheet-neis-list h4{margin:0 0 4px;font-size:13px;color:#597863}.sheet-neis-list p{margin:4px 0;font-size:13px;line-height:1.6}

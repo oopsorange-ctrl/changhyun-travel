@@ -29,6 +29,21 @@ export function wall(api:DetailApi,where:Where,model:ClassroomModel,t:number):bo
   return api.place(model,t,L-s.dv/2-gap,'down');
 }
 
+/**
+ * 정해 둔 자리에 안 들어가는 좁은 방을 위해, 격자를 훑어 놓을 수 있는 첫 자리부터 모형을 놓는다(맨 안쪽 벽에서 문 쪽으로, 왼쪽에서 오른쪽으로).
+ * 방 안에 놓을 수 있는지(문 앞 통로·좁은 틈·겹침)는 place가 검사하고, 이미 놓은 것과는 aisle(m) 이상 띄운다. 놓은 개수를 돌려준다.
+ */
+export function scan(api:DetailApi,model:ClassroomModel,face:Face,count:number,limits:{uFrom?:number;uTo?:number;vFrom?:number;vTo?:number;aisle?:number}={}):number {
+  const size=modelSize(model,face),aisle=limits.aisle??.9;
+  const uFrom=limits.uFrom??size.du/2,uTo=limits.uTo??api.D-size.du/2,vFrom=limits.vFrom??size.dv/2,vTo=limits.vTo??api.L-size.dv/2;
+  const placed:[number,number][]=[];
+  for(let u=uTo;u>=uFrom-1e-6&&placed.length<count;u-=.1)for(let v=vFrom;v<=vTo+1e-6&&placed.length<count;v+=.1) {
+    if(placed.some(([pu,pv])=>Math.abs(u-pu)<size.du+aisle&&Math.abs(v-pv)<size.dv+aisle))continue;
+    if(api.place(model,u,v,face))placed.push([u,v]);
+  }
+  return placed.length;
+}
+
 /** n개를 [from,to] 구간에 고르게 늘어놓은 가운데 자리들. */
 const spread=(from:number,to:number,n:number)=>Array.from({length:n},(_,i)=>from+(to-from)*(i+.5)/n);
 const sets:ClassroomModel[]=['lab-set-orange','lab-set-grey','lab-set-maroon'];
@@ -37,7 +52,7 @@ const sets:ClassroomModel[]=['lab-set-orange','lab-set-grey','lab-set-maroon'];
  * 방 이름과 종류로 가구를 놓고, 기본 책상·벤치를 대신하면 'replace', 기본 배치 위에 더하면 'extra',
  * 따로 놓을 것이 없으면 'none'을 돌려준다.
  */
-export function roomDetails(name:string,style:RoomKind,api:DetailApi):'replace'|'extra'|'none' {
+function primaryDetails(name:string,style:RoomKind,api:DetailApi):'replace'|'extra'|'none' {
   const {L,D,place}=api;
   const wide=L>=5.5;
   if(style==='classroom') {
@@ -141,7 +156,8 @@ export function roomDetails(name:string,style:RoomKind,api:DetailApi):'replace'|
       return 'replace';
     }
     if(/합창/.test(name)) {
-      wall(api,'far','bleacher',L/2);wall(api,'left','upright-piano',D*.4);
+      if(!wall(api,'far','bleacher',L/2))scan(api,'bleacher','out',1,{uFrom:D-1.0});
+      wall(api,'left','upright-piano',D*.4);
       return 'replace';
     }
     if(/아름/.test(name)) {
@@ -153,8 +169,45 @@ export function roomDetails(name:string,style:RoomKind,api:DetailApi):'replace'|
   }
   if(style==='library') {
     wall(api,'near','book-cart',L-1.2);
+    scan(api,'circulation-desk','in',1,{uTo:1.6,aisle:.9});
     place('lounge-chair-green',.9,L-3,'in');place('lounge-chair-green',.9,L-3.9,'in');
     return 'extra';
   }
   return 'none';
+}
+
+/** 정한 자리가 모두 막혀 아무것도 못 놓은 방(좁은 방 등)을 위해, 놓을 수 있는 자리를 찾아 용도에 맞는 가구를 몇 개라도 놓는다. */
+function fallbackDetails(name:string,style:RoomKind,api:DetailApi):'replace'|'extra'|'none'|undefined {
+  const {D}=api;
+  if(/당직|화장실|샤워/.test(name))return undefined;
+  if(style==='office') {
+    // 폭 2.8 m 미만의 아주 좁은 방은 세미나 탁자를 놓으면 양옆 통로가 막히므로 낮은 수납장만 둔다.
+    if(api.L>=2.8&&!scan(api,'seminar-set','in',1,{uFrom:2.0,uTo:D-1.2})&&!scan(api,'seminar-set','up',1,{uFrom:1.5,uTo:D-.8,aisle:.6}))scan(api,'window-desk','in',1,{uFrom:1.5,uTo:D-.8,aisle:.6});
+    scan(api,'office-cabinet','out',2,{uFrom:D-.26});
+    return 'extra';
+  }
+  if(style==='lab') {
+    if(/컴퓨터|정보/.test(name)) {
+      scan(api,'computer-set','down',6);
+      scan(api,'teacher-desk','up',1,{aisle:.6});
+      return 'replace';
+    }
+    if(/음악실|베이스|알토/.test(name)) {
+      scan(api,'upright-piano','out',1,{uFrom:D-.6});
+      scan(api,'storage-rack','up',1,{vTo:.31});
+      return 'extra';
+    }
+  }
+  return undefined;
+}
+
+/** 방 용도에 맞는 가구를 놓고, 기본 책상·벤치를 대신하면 'replace', 기본 배치 위에 더하면 'extra', 따로 놓을 것이 없으면 'none'을 돌려준다. */
+export function roomDetails(name:string,style:RoomKind,api:DetailApi):'replace'|'extra'|'none' {
+  let placed=0;
+  const counting:DetailApi={...api,place:(model,u,v,face)=>{const ok=api.place(model,u,v,face);if(ok)placed++;return ok;}};
+  const result=primaryDetails(name,style,counting);
+  if(placed>0)return result;
+  const fallback=fallbackDetails(name,style,counting);
+  if(fallback===undefined)return result==='replace'?'extra':result;
+  return placed>0?fallback:result==='replace'?'extra':result;
 }

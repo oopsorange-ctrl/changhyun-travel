@@ -10,7 +10,7 @@ Meshy 모형과 그 파생본은 CC BY 4.0이다. 공유할 때는 제작 정보
 - 라이선스: **CC BY 4.0** — 2026-10-22 제작 계정의 Meshy 에셋 상세 화면에서 확인. 무료 요금제로 만든 모형이다.
 - 원본: `assets/school-player-meshy-source.glb` — 관절·동작이 없고 한쪽 다리를 든 자세의 모형. 고치지 않고 보존한다.
 - 사이트용: `public/school-player-meshy.glb`. `assets/prepare_school_meshy.py`가 18개 관절을 심고, 아래 기본 주인공의 걷기 동작을 옮겨 붙이고, 키 1.70m·22,000삼각형으로 정리한다. 재킷의 버건디색과 피부색을 보정했다. 과정은 [청학고 교복 기록](docs/cheonghak/SCHOOL_UNIFORM_PLAN.md)에 있다.
-- 창현 여행(창이): 위 재킷 색을 창현고 교복색(회색 재킷·검정 바지·검정 넥타이)으로 다시 칠했다(`assets/prepare_school_meshy.py`). 현이: `assets/prepare_hyeoni.py`가 창이 모형에 어깨 아래까지 오는 검은 긴 머리와 무릎 길이 주름치마(Blender에서 직접 만든 면)를 더하고 바지를 맨다리로 칠해 `public/school-hyeoni.glb`를 만든다. 교장선생님 모형(`public/school-residents.glb`)은 앞머리선을 올려 이마를 넓혔다(`assets/prepare_school_residents_meshy.py`).
+- 창현 여행(창이): 위 재킷 색을 창현고 교복색(회색 재킷·검정 바지·검정 넥타이)으로 다시 칠했다(`assets/prepare_school_meshy.py`). 창이는 `assets/prepare_changi_glasses.py`가 Blender에서 직접 만든 검은 둥근 안경을 더한다(몸 모형만 쓰는 현이에게는 따라가지 않는다). 현이: `assets/prepare_hyeoni.py`가 창이 모형에 앞머리(뱅)와 얼굴 옆 머리카락이 있는 어깨 아래까지 오는 검은 긴 머리, 머리 리본, 무릎 길이 주름치마(모두 Blender에서 직접 만든 면)를 더하고 바지를 맨다리로 칠해 `public/school-hyeoni.glb`를 만든다. 실행 순서는 prepare_school_meshy → prepare_changi_glasses → prepare_hyeoni. 교장선생님 모형(`public/school-residents.glb`)은 앞머리선을 올려 이마를 넓혔다(`assets/prepare_school_residents_meshy.py`).
 - 교복은 사용자가 제공한 교복 사진의 색과 형태만 참고했다. 학생의 얼굴·체형·명찰은 따라 만들지 않았고, 사진은 저장소와 외부 서비스에 넣지 않았다.
 
 ## 교직원 캐릭터 4명
@@ -48,3 +48,5 @@ Meshy 모형과 그 파생본은 CC BY 4.0이다. 공유할 때는 제작 정보
 ## 공유 이미지
 
 - `public/school-share-v2.jpg`(1200×630, 창현 여행)은 `assets/school-share-card.html`을 브라우저에서 열어 촬영한 이미지다. 학교 3D 모형 화면으로 만들었다.
+
+- 유집체육관 붉은 벽돌 무늬는 `src/school-scene.ts`가 캔버스로 직접 그린 것이다(외부 이미지 없음). 앞 정원 꽃밭·운동장 가장자리 단풍나무도 같은 파일에서 도형으로 만든다.
